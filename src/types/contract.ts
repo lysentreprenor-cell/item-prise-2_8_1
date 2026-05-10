@@ -11,20 +11,15 @@ export interface Room {
 }
 
 export interface ContractData {
-  // Step 1 – Basics
   contractType: ContractType | '';
   category: ContractCategory | '';
   pricingMethod: PricingMethod | '';
   deadline: string;
-
-  // Step 2 – Scope
   rooms: Room[];
   hasElectrical: boolean;
   hasPlumbing: boolean;
   hasMaterials: boolean;
   additionalItems: string[];
-
-  // Step 3 – Pricing
   totalArea: number;
   pricePerM2: number;
   materialsValue: number;
@@ -32,14 +27,10 @@ export interface ContractData {
   lumpSumPrice: number;
   hourlyRate: number;
   estimatedHours: number;
-
-  // Step 4 – Payment
   paymentSplit: PaymentSplit | '';
   upfrontPercent: number;
   depositPercent: number;
   afterPercent: number;
-
-  // Step 5 – Conditions
   requiredProofs: string[];
   executionConditions: string[];
   hasAcceptanceProtocol: boolean;
