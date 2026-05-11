@@ -26,9 +26,8 @@ export default function Step3Pricing({ data, updateData, totalAmount }: Props) {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
-        <Text style={styles.stepNum}>Krok 3</Text>
         <Text style={styles.stepTitle}>Wycena</Text>
-        <Text style={styles.stepDesc}>Wprowadź koszty, a suma zostanie obliczona automatycznie.</Text>
+        <Text style={styles.stepDesc}>Kwota obliczana automatycznie.</Text>
       </View>
 
       {totalAmount > 50000 && (
@@ -179,7 +178,6 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: C.bg },
   content: { padding: 16, paddingBottom: 24 },
   header: { marginBottom: 16 },
-  stepNum: { color: C.purple, fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 },
   stepTitle: { color: C.white, fontSize: 22, fontWeight: '800', marginBottom: 4 },
   stepDesc: { color: C.textSec, fontSize: 14, lineHeight: 20 },
   subTotal: {

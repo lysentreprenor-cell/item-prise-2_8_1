@@ -83,9 +83,8 @@ export default function Step4Payment({ data, updateData, totalAmount }: Props) {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
-        <Text style={styles.stepNum}>Krok 4</Text>
         <Text style={styles.stepTitle}>Płatność i depozyt</Text>
-        <Text style={styles.stepDesc}>Określ, jak zostanie podzielona kwota {formatCurrency(totalAmount)}.</Text>
+        <Text style={styles.stepDesc}>Jak podzielić {formatCurrency(totalAmount)}?</Text>
       </View>
 
       <Section title="Model płatności">
@@ -170,7 +169,6 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: C.bg },
   content: { padding: 16, paddingBottom: 24 },
   header: { marginBottom: 16 },
-  stepNum: { color: C.purple, fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 },
   stepTitle: { color: C.white, fontSize: 22, fontWeight: '800', marginBottom: 4 },
   stepDesc: { color: C.textSec, fontSize: 14, lineHeight: 20 },
   splitCard: {

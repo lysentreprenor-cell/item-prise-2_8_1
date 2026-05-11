@@ -1,7 +1,7 @@
 import React from 'react';
-import { ScrollView, View, Text, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { ContractData, ContractType, ContractCategory, PricingMethod } from '../../../types/contract';
-import { Section, Field, ChipGroup, Input } from '../components/FormField';
+import { Section, ChipGroup, Field, Input } from '../components/FormField';
 import { C } from '../../../theme';
 
 interface Props {
@@ -9,23 +9,23 @@ interface Props {
   updateData: (updates: Partial<ContractData>) => void;
 }
 
-const CONTRACT_TYPES: { value: ContractType; label: string }[] = [
-  { value: 'remont', label: '🔨 Remont' },
-  { value: 'budowa', label: '🏗️ Budowa' },
-  { value: 'instalacja', label: '⚡ Instalacja' },
-  { value: 'wykonczenie', label: '🪟 Wykończenie' },
-  { value: 'inne', label: '📋 Inne' },
+const CONTRACT_TYPES: { value: ContractType; icon: string; label: string; desc: string }[] = [
+  { value: 'remont',      icon: '🔨', label: 'Remont',      desc: 'Prace remontowe'     },
+  { value: 'budowa',      icon: '🏗️', label: 'Budowa',      desc: 'Nowa konstrukcja'    },
+  { value: 'instalacja',  icon: '⚡', label: 'Instalacja',  desc: 'Elektryka, wod-kan'  },
+  { value: 'wykonczenie', icon: '🪟', label: 'Wykończenie', desc: 'Prace wykończeniowe'  },
+  { value: 'inne',        icon: '📋', label: 'Inne',        desc: 'Pozostałe prace'     },
 ];
 
 const CATEGORIES: { value: ContractCategory; label: string }[] = [
   { value: 'mieszkaniowy', label: '🏠 Mieszkaniowy' },
-  { value: 'komercyjny', label: '🏢 Komercyjny' },
-  { value: 'przemyslowy', label: '🏭 Przemysłowy' },
+  { value: 'komercyjny',   label: '🏢 Komercyjny'   },
+  { value: 'przemyslowy',  label: '🏭 Przemysłowy'  },
 ];
 
 const PRICING_METHODS: { value: PricingMethod; label: string }[] = [
-  { value: 'per_m2', label: 'Za m²' },
-  { value: 'ryczalt', label: 'Ryczałt' },
+  { value: 'per_m2',    label: 'Za m²'     },
+  { value: 'ryczalt',   label: 'Ryczałt'   },
   { value: 'godzinowy', label: 'Godzinowy' },
 ];
 
@@ -37,60 +37,57 @@ export default function Step1Basics({ data, updateData }: Props) {
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.header}>
-        <Text style={styles.stepNum}>Krok 1</Text>
-        <Text style={styles.stepTitle}>Podstawy umowy</Text>
-        <Text style={styles.stepDesc}>Określ typ, kategorię i sposób wyceny prac.</Text>
+      <View style={styles.hero}>
+        <View style={styles.heroIconWrap}>
+          <Text style={styles.heroEmoji}>🛡️</Text>
+        </View>
+        <Text style={styles.heroTitle}>Nowa umowa</Text>
+        <Text style={styles.heroSub}>Zabezpiecz każdą współpracę w 6 krokach</Text>
       </View>
 
       <Section title="Typ umowy">
-        <Field label="Rodzaj prac">
-          <View style={styles.typeGrid}>
-            {CONTRACT_TYPES.map(opt => {
-              const isActive = data.contractType === opt.value;
-              return (
-                <View key={opt.value} style={{ width: '48%' }}>
-                  <View style={[styles.typeCard, isActive && styles.typeCardActive]}>
-                    <Text
-                      style={[styles.typeCardText, isActive && styles.typeCardTextActive]}
-                      onPress={() => updateData({ contractType: opt.value })}
-                    >
-                      {opt.label}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        </Field>
+        <View style={styles.typeGrid}>
+          {CONTRACT_TYPES.map(t => {
+            const active = data.contractType === t.value;
+            return (
+              <TouchableOpacity
+                key={t.value}
+                style={[styles.typeCard, active && styles.typeCardActive]}
+                onPress={() => updateData({ contractType: t.value })}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.typeIcon}>{t.icon}</Text>
+                <Text style={[styles.typeLabel, active && styles.typeLabelActive]}>{t.label}</Text>
+                <Text style={styles.typeDesc}>{t.desc}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </Section>
 
-      <Section title="Kategoria">
-        <Field label="Typ obiektu">
-          <ChipGroup
-            options={CATEGORIES}
-            selected={data.category}
-            onSelect={v => updateData({ category: v as ContractCategory })}
-          />
-        </Field>
+      <Section title="Kategoria obiektu">
+        <ChipGroup
+          options={CATEGORIES}
+          selected={data.category}
+          onSelect={v => updateData({ category: v as ContractCategory })}
+        />
       </Section>
 
       <Section title="Sposób wyceny">
-        <Field label="Metoda rozliczenia" hint="Możesz zmienić w kroku 3.">
-          <ChipGroup
-            options={PRICING_METHODS}
-            selected={data.pricingMethod}
-            onSelect={v => updateData({ pricingMethod: v as PricingMethod })}
-          />
-        </Field>
+        <ChipGroup
+          options={PRICING_METHODS}
+          selected={data.pricingMethod}
+          onSelect={v => updateData({ pricingMethod: v as PricingMethod })}
+        />
+        <Text style={styles.hint}>Możesz zmienić w kroku 3.</Text>
       </Section>
 
       <Section title="Termin realizacji">
-        <Field label="Data zakończenia prac" hint="Format: RRRR-MM-DD">
+        <Field label="Data zakończenia prac" hint="np. 30.06.2025">
           <Input
             value={data.deadline}
             onChangeText={v => updateData({ deadline: v })}
-            placeholder="np. 2024-06-30"
+            placeholder="30.06.2025"
           />
         </Field>
       </Section>
@@ -101,31 +98,67 @@ export default function Step1Basics({ data, updateData }: Props) {
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: C.bg },
   content: { padding: 16, paddingBottom: 24 },
-  header: { marginBottom: 16 },
-  stepNum: {
-    color: C.purple,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+
+  hero: {
+    alignItems: 'center',
+    paddingVertical: 20,
     marginBottom: 4,
   },
-  stepTitle: { color: C.white, fontSize: 22, fontWeight: '800', marginBottom: 4 },
-  stepDesc: { color: C.textSec, fontSize: 14, lineHeight: 20 },
-  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  heroIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: C.purpleSubtle,
+    borderWidth: 1.5,
+    borderColor: C.purpleDim,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    shadowColor: C.purple,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  heroEmoji: { fontSize: 28 },
+  heroTitle: {
+    color: C.white,
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  heroSub: {
+    color: C.textSec,
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+
+  typeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   typeCard: {
+    width: '48%',
+    backgroundColor: C.inputBg,
     borderRadius: C.radiusSm,
     borderWidth: 1,
     borderColor: C.border,
-    backgroundColor: C.inputBg,
     paddingVertical: 12,
     paddingHorizontal: 8,
     alignItems: 'center',
+    gap: 3,
   },
   typeCardActive: {
-    backgroundColor: C.purpleDim,
+    backgroundColor: C.purpleSubtle,
     borderColor: C.purple,
   },
-  typeCardText: { color: C.textSec, fontSize: 13, fontWeight: '500', textAlign: 'center' },
-  typeCardTextActive: { color: C.purpleLight, fontWeight: '700' },
+  typeIcon: { fontSize: 22 },
+  typeLabel: { color: C.textSec, fontSize: 13, fontWeight: '600' },
+  typeLabelActive: { color: C.purpleLight },
+  typeDesc: { color: C.textMuted, fontSize: 10, textAlign: 'center' },
+
+  hint: { color: C.textMuted, fontSize: 11, marginTop: 6 },
 });

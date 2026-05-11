@@ -54,7 +54,7 @@ export default function Step6Summary({ data, updateData, totalAmount, goToStep, 
   if (!data.contractType) warnings.push('Brak typu umowy');
   if (!data.pricingMethod) warnings.push('Brak metody wyceny');
   if (totalAmount === 0) warnings.push('Kwota umowy wynosi 0 zł');
-  if (!data.paymentSplit) warnings.push('Brak określonego modelu płatności');
+  if (!data.paymentSplit) warnings.push('Brak modelu płatności');
   if (!data.deadline) warnings.push('Brak terminu realizacji');
 
   return (
@@ -64,9 +64,8 @@ export default function Step6Summary({ data, updateData, totalAmount, goToStep, 
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
-        <Text style={styles.stepNum}>Krok 6</Text>
         <Text style={styles.stepTitle}>Podsumowanie</Text>
-        <Text style={styles.stepDesc}>Sprawdź wszystkie dane przed utworzeniem umowy.</Text>
+        <Text style={styles.stepDesc}>Sprawdź dane i utwórz umowę.</Text>
       </View>
 
       {warnings.length > 0 && (
@@ -201,7 +200,6 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: C.bg },
   content: { padding: 16, paddingBottom: 32 },
   header: { marginBottom: 16 },
-  stepNum: { color: C.purple, fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 },
   stepTitle: { color: C.white, fontSize: 22, fontWeight: '800', marginBottom: 4 },
   stepDesc: { color: C.textSec, fontSize: 14, lineHeight: 20 },
   warningsBox: {

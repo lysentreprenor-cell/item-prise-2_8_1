@@ -112,9 +112,8 @@ export default function Step2Scope({ data, updateData }: Props) {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
-        <Text style={styles.stepNum}>Krok 2</Text>
         <Text style={styles.stepTitle}>Zakres prac</Text>
-        <Text style={styles.stepDesc}>Dodaj pomieszczenia i określ zakres dla każdego z nich.</Text>
+        <Text style={styles.stepDesc}>Pomieszczenia i prace do wykonania.</Text>
       </View>
 
       {data.rooms.length === 0 && (
@@ -193,7 +192,6 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: C.bg },
   content: { padding: 16, paddingBottom: 24 },
   header: { marginBottom: 16 },
-  stepNum: { color: C.purple, fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 },
   stepTitle: { color: C.white, fontSize: 22, fontWeight: '800', marginBottom: 4 },
   stepDesc: { color: C.textSec, fontSize: 14, lineHeight: 20 },
   addRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },

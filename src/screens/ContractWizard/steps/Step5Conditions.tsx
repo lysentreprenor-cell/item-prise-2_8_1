@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import { ContractData } from '../../../types/contract';
 import { Section, Field, Toggle, Input, HintBox } from '../components/FormField';
 import { C } from '../../../theme';
@@ -50,9 +50,8 @@ export default function Step5Conditions({ data, updateData }: Props) {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
-        <Text style={styles.stepNum}>Krok 5</Text>
         <Text style={styles.stepTitle}>Warunki wykonania</Text>
-        <Text style={styles.stepDesc}>Określ wymagania, warunki odbioru i terminy wypłaty.</Text>
+        <Text style={styles.stepDesc}>Odbiór, poprawki i terminy wypłaty.</Text>
       </View>
 
       {data.contractType === 'remont' && !data.hasAcceptanceProtocol && (
@@ -66,28 +65,6 @@ export default function Step5Conditions({ data, updateData }: Props) {
         <HintBox type="suggestion" message="Brak terminu na poprawki – sugerujemy 7 dni roboczych." />
       )}
 
-      <Section title="Wymagane dowody wykonania">
-        {PROOF_OPTIONS.map(item => (
-          <Toggle
-            key={item}
-            label={item}
-            value={data.requiredProofs.includes(item)}
-            onToggle={() => toggleProof(item)}
-          />
-        ))}
-      </Section>
-
-      <Section title="Warunki wykonania">
-        {CONDITION_OPTIONS.map(item => (
-          <Toggle
-            key={item}
-            label={item}
-            value={data.executionConditions.includes(item)}
-            onToggle={() => toggleCondition(item)}
-          />
-        ))}
-      </Section>
-
       <Section title="Protokół odbioru">
         <Toggle
           label="Wymagany protokół odbioru"
@@ -98,7 +75,7 @@ export default function Step5Conditions({ data, updateData }: Props) {
         {data.hasAcceptanceProtocol && (
           <View style={styles.infoBox}>
             <Text style={styles.infoText}>
-              Protokół odbioru zostanie dołączony do umowy. Obie strony muszą go podpisać przed wypłatą depozytu.
+              Obie strony podpisują protokół przed wypłatą depozytu.
             </Text>
           </View>
         )}
@@ -118,7 +95,7 @@ export default function Step5Conditions({ data, updateData }: Props) {
         </Field>
         <Field
           label="Termin wypłaty depozytu (dni od odbioru)"
-          hint="Po ilu dniach od podpisanego protokołu środki trafiają do wykonawcy."
+          hint="Po ilu dniach środki trafiają do wykonawcy."
         >
           <Input
             value={data.paymentDeadlineDays > 0 ? String(data.paymentDeadlineDays) : ''}
@@ -128,6 +105,28 @@ export default function Step5Conditions({ data, updateData }: Props) {
           />
         </Field>
       </Section>
+
+      <Section title="Wymagane dowody">
+        {PROOF_OPTIONS.map(item => (
+          <Toggle
+            key={item}
+            label={item}
+            value={data.requiredProofs.includes(item)}
+            onToggle={() => toggleProof(item)}
+          />
+        ))}
+      </Section>
+
+      <Section title="Warunki dodatkowe">
+        {CONDITION_OPTIONS.map(item => (
+          <Toggle
+            key={item}
+            label={item}
+            value={data.executionConditions.includes(item)}
+            onToggle={() => toggleCondition(item)}
+          />
+        ))}
+      </Section>
     </ScrollView>
   );
 }
@@ -136,7 +135,6 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: C.bg },
   content: { padding: 16, paddingBottom: 24 },
   header: { marginBottom: 16 },
-  stepNum: { color: C.purple, fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 },
   stepTitle: { color: C.white, fontSize: 22, fontWeight: '800', marginBottom: 4 },
   stepDesc: { color: C.textSec, fontSize: 14, lineHeight: 20 },
   infoBox: {
