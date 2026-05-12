@@ -1,5 +1,5 @@
-run = "npx --yes http-server dist -p 3000 --cors -c-1"
+run = "npx --yes http-server dist -p 8080 --cors -c-1"
 
 [[ports]]
-localPort = 3000
+localPort = 8080
 externalPort = 80
