@@ -1,0 +1,5 @@
+run = "npm install --legacy-peer-deps && npx expo export -p web && npx --yes serve dist -l 3000"
+
+[[ports]]
+localPort = 3000
+externalPort = 80
