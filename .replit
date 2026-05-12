@@ -1,4 +1,4 @@
-run = "npm install --legacy-peer-deps && npx expo export -p web && npx --yes http-server dist -p 3000 --cors -c-1"
+run = "npx --yes http-server dist -p 3000 --cors -c-1"
 
 [[ports]]
 localPort = 3000
