@@ -20,6 +20,10 @@
   "overrides": {
     "react-dom": "$react"
   },
+  "resolutions": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
   "devDependencies": {
     "@babel/core": "^7.20.0",
     "@types/react": "~18.3.0",
