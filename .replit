@@ -1,8 +1,9 @@
-run = "npm install --legacy-peer-deps && npx expo start --web"
+run = "npm install --legacy-peer-deps && npx expo export --platform web && npx serve dist -l 3000"
 entrypoint = "App.tsx"
 
 [nix]
 channel = "stable-24_05"
 
 [deployment]
-run = ["sh", "-c", "npm install --legacy-peer-deps && npx expo start --web"]
+run = ["sh", "-c", "npm install --legacy-peer-deps && npx expo export --platform web && npx serve dist -l 3000"]
+deploymentTarget = "cloudrun"
