@@ -8,12 +8,22 @@ interface Props {
   currentStep: number;
   totalSteps: number;
   onStepPress?: (step: number) => void;
+  stepLabels?: string[];
+  onBack?: () => void;
 }
 
-export default function ProgressBar({ currentStep, totalSteps, onStepPress }: Props) {
+export default function ProgressBar({ currentStep, totalSteps, onStepPress, stepLabels, onBack }: Props) {
+  const labels = stepLabels ?? STEP_LABELS;
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Nowa umowa</Text>
+      <View style={styles.titleRow}>
+        {onBack && (
+          <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.75}>
+            <Text style={styles.backArrow}>←</Text>
+          </TouchableOpacity>
+        )}
+        <Text style={styles.title}>Nowa umowa</Text>
+      </View>
       <Text style={styles.subtitle}>Krok {currentStep} z {totalSteps}</Text>
       <View style={styles.stepsRow}>
         {Array.from({ length: totalSteps }, (_, i) => {
@@ -26,7 +36,7 @@ export default function ProgressBar({ currentStep, totalSteps, onStepPress }: Pr
                 <View style={[styles.circle, isCompleted && styles.circleCompleted, isActive && styles.circleActive]}>
                   {isCompleted ? <Text style={styles.checkmark}>✓</Text> : <Text style={[styles.circleText, isActive && styles.circleTextActive]}>{step}</Text>}
                 </View>
-                <Text style={[styles.label, isActive && styles.labelActive]} numberOfLines={1}>{STEP_LABELS[i]}</Text>
+                <Text style={[styles.label, isActive && styles.labelActive]} numberOfLines={1}>{labels[i]}</Text>
               </TouchableOpacity>
               {step < totalSteps && <View style={[styles.line, isCompleted && styles.lineCompleted]} />}
             </React.Fragment>
@@ -39,6 +49,9 @@ export default function ProgressBar({ currentStep, totalSteps, onStepPress }: Pr
 
 const styles = StyleSheet.create({
   container: { backgroundColor: C.card, paddingTop: 12, paddingBottom: 14, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: C.border },
+  titleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 0 },
+  backBtn: { marginRight: 8, padding: 2 },
+  backArrow: { color: C.purpleLight, fontSize: 18, fontWeight: '700' },
   title: { color: C.white, fontSize: 17, fontWeight: '700', letterSpacing: 0.2 },
   subtitle: { color: C.textSec, fontSize: 12, marginTop: 1, marginBottom: 10 },
   stepsRow: { flexDirection: 'row', alignItems: 'flex-start' },

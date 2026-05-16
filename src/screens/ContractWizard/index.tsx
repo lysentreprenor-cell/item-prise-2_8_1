@@ -15,7 +15,9 @@ import Step6Summary from './steps/Step6Summary';
 
 const TOTAL_STEPS = 6;
 
-export default function ContractWizard() {
+interface Props { onBack?: () => void; }
+
+export default function ContractWizard({ onBack }: Props) {
   const [currentStep, setCurrentStep] = useState(1);
   const [data, setData] = useState<ContractData>(INITIAL_CONTRACT_DATA);
 
@@ -45,7 +47,7 @@ export default function ContractWizard() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" backgroundColor={C.bg} />
       <View style={styles.container}>
-        <ProgressBar currentStep={currentStep} totalSteps={TOTAL_STEPS} onStepPress={goToStep} />
+        <ProgressBar currentStep={currentStep} totalSteps={TOTAL_STEPS} onStepPress={goToStep} onBack={onBack} />
         <View style={styles.content}>{renderStep()}</View>
         <WizardNavigation currentStep={currentStep} totalSteps={TOTAL_STEPS} onBack={goBack} onNext={goNext} onSaveDraft={saveDraft} onCreateContract={createContract} />
       </View>
