@@ -156,17 +156,17 @@ const labelStyle: React.CSSProperties = {
   letterSpacing: 0.8, color: "var(--color-muted-foreground)", marginBottom: 8, display: "block",
 };
 const cardStyle = (active = false): React.CSSProperties => ({
-  padding: 14, borderRadius: 12,
+  padding: "12px 14px", borderRadius: 12, boxSizing: "border-box", width: "100%",
   border: active ? "1.5px solid var(--color-primary)" : "1px solid var(--color-border)",
   background: active ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)",
   cursor: "pointer",
 });
 const sectionCard: React.CSSProperties = {
   padding: 14, borderRadius: 12, border: "1px solid var(--color-border)",
-  background: "var(--color-card)", marginBottom: 12,
+  background: "var(--color-card)", marginBottom: 12, boxSizing: "border-box",
 };
 const tileGrid: React.CSSProperties = {
-  display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8,
+  display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%",
 };
 const btnPrimary: React.CSSProperties = {
   padding: "10px 20px", borderRadius: 10, border: "none",
@@ -423,7 +423,7 @@ export default function AgreementNew() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--color-background)", display: "flex", flexDirection: "column", maxWidth: 560, margin: "0 auto", paddingBottom: 88 }}>
+    <div style={{ minHeight: "100vh", background: "var(--color-background)", display: "flex", flexDirection: "column", width: "100%", maxWidth: 560, margin: "0 auto", paddingBottom: 88, overflow: "hidden", boxSizing: "border-box" }}>
       {/* Progress bar */}
       <div style={{ padding: "12px 16px 6px", position: "sticky", top: 0, background: "var(--color-background)", zIndex: 10, borderBottom: "1px solid var(--color-border)" }}>
         <div style={{ display: "flex", gap: 4, overflowX: "auto", marginBottom: 6 }}>
