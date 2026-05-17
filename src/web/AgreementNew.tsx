@@ -57,6 +57,8 @@ interface ElectronicsDetails {
 }
 
 interface WizardData {
+  myRole: "client" | "contractor" | "";
+  inviteContact: string;
   category: Category | "";
   subcategory: string;
   client: Party;
@@ -117,6 +119,7 @@ interface WizardData {
 }
 
 const INITIAL: WizardData = {
+  myRole: "", inviteContact: "",
   category: "", subcategory: "",
   client: { name: "", phone: "", email: "" },
   contractor: { name: "", phone: "", email: "" },
@@ -280,6 +283,7 @@ function getContextualNudge(data: WizardData): { icon: string; text: string; col
 
 function getSteps(category: string) {
   const base = [
+    { id: "rola", label: "Rola" },
     { id: "kategoria", label: "Kategoria" },
     { id: "podkategoria", label: "Podkategoria" },
     { id: "strony", label: "Strony" },
@@ -326,8 +330,12 @@ export default function AgreementNew() {
     warnings.push("Depozyt nie jest przypisany do konkretnych etapów");
 
   const canGoNext = () => {
+    if (currentStep === "rola") return !!data.myRole;
     if (currentStep === "kategoria") return !!data.category && data.category !== "pozyczka";
-    if (currentStep === "strony") return true;
+    if (currentStep === "strony") {
+      const mine = data.myRole === "contractor" ? data.contractor : data.client;
+      return !!mine.name;
+    }
     return true;
   };
 
@@ -340,6 +348,7 @@ export default function AgreementNew() {
 
   const renderStep = () => {
     switch (currentStep) {
+      case "rola": return <StepRola data={data} update={update} goNext={goNext} />;
       case "kategoria": return <StepKategoria data={data} update={update} goNext={goNext} />;
       case "podkategoria": return <StepPodkategoria data={data} update={update} goNext={goNext} />;
       case "strony": return <StepStrony data={data} update={update} />;
@@ -355,25 +364,57 @@ export default function AgreementNew() {
       case "warunki": return <StepWarunki data={data} update={update} />;
       case "protokol": return <StepProtokol data={data} update={update} />;
       case "przeglad": return <StepPrzeglad data={data} steps={steps} goToStep={setStepIndex} warnings={warnings} totalPrice={totalPrice} />;
-      case "podpis": return <StepPodpis data={data} signed={signed} setSigned={setSigned} />;
+      case "podpis": return <StepPodpis data={data} update={update} signed={signed} setSigned={setSigned} />;
       default: return null;
     }
   };
 
   if (signed) {
+    const otherParty = data.myRole === "contractor" ? data.client : data.contractor;
+    const myParty = data.myRole === "contractor" ? data.contractor : data.client;
+    const invited = data.inviteContact || otherParty.email || otherParty.phone;
+    const otherLabel = data.myRole === "contractor"
+      ? (data.category === "wynajem" ? "Najemca" : data.category === "sprzedaz" ? "Kupujący" : "Zleceniodawca")
+      : (data.category === "wynajem" ? "Wynajmujący" : data.category === "sprzedaz" ? "Sprzedający" : "Wykonawca");
     return (
       <div style={{ minHeight: "100vh", background: "var(--color-background)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
-        <div style={{ textAlign: "center", maxWidth: 400 }}>
-          <div style={{ fontSize: 64, marginBottom: 16 }}>✅</div>
-          <h2 style={{ color: "var(--color-foreground)", fontSize: 26, fontWeight: 800, marginBottom: 8 }}>Umowa aktywna ✓</h2>
-          <p style={{ color: "var(--color-muted-foreground)", fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
-            Depozyt oczekuje na wpłatę. Druga strona została powiadomiona.
+        <div style={{ textAlign: "center", maxWidth: 400, width: "100%" }}>
+          <div style={{ fontSize: 56, marginBottom: 12 }}>📄</div>
+          <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 6 }}>Umowa podpisana ✓</h2>
+          <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
+            Twój podpis został dodany. Oczekuje na akceptację drugiej strony.
           </p>
-          <div style={{ background: "color-mix(in srgb, var(--color-primary) 10%, transparent)", borderRadius: 12, border: "1.5px solid var(--color-primary)", padding: 16, marginBottom: 16 }}>
-            <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, marginBottom: 4 }}>Łączna kwota umowy</div>
-            <div style={{ color: "var(--color-primary)", fontSize: 28, fontWeight: 800 }}>{totalPrice.toLocaleString("pl-PL")} {data.currency}</div>
+
+          {totalPrice > 0 && (
+            <div style={{ background: "color-mix(in srgb, var(--color-primary) 10%, transparent)", borderRadius: 12, border: "1.5px solid var(--color-primary)", padding: 16, marginBottom: 12 }}>
+              <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, marginBottom: 4 }}>Łączna kwota umowy</div>
+              <div style={{ color: "var(--color-primary)", fontSize: 28, fontWeight: 800 }}>{totalPrice.toLocaleString("pl-PL")} {data.currency}</div>
+            </div>
+          )}
+
+          <div style={{ borderRadius: 12, border: "1px solid var(--color-border)", background: "var(--color-card)", padding: 16, marginBottom: 12, textAlign: "left" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--color-muted-foreground)", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>Status umowy</div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
+              <div style={{ width: 8, height: 8, borderRadius: 4, background: "#16a34a", flexShrink: 0 }} />
+              <span style={{ color: "var(--color-foreground)", fontSize: 13 }}>
+                <b>{myParty.name || "Ty"}</b> — podpisano ✓
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <div style={{ width: 8, height: 8, borderRadius: 4, background: "#f59e0b", flexShrink: 0 }} />
+              <span style={{ color: "var(--color-foreground)", fontSize: 13 }}>
+                <b>{otherParty.name || invited || otherLabel}</b> — oczekuje na akceptację
+              </span>
+            </div>
           </div>
-          <button onClick={() => { setSigned(false); setStepIndex(0); setData({ ...INITIAL, currency: defaultCurrency }); }} style={{ ...btnSecondary, width: "100%" }}>
+
+          {invited && (
+            <div style={{ borderRadius: 10, border: "1px solid color-mix(in srgb, #16a34a 30%, transparent)", background: "color-mix(in srgb, #16a34a 8%, transparent)", padding: 12, marginBottom: 12 }}>
+              <div style={{ color: "#16a34a", fontSize: 12, fontWeight: 600 }}>📤 Zaproszenie wysłane do: {invited}</div>
+            </div>
+          )}
+
+          <button onClick={() => { setSigned(false); setStepIndex(0); setData({ ...INITIAL, currency: defaultCurrency }); }} style={{ ...btnSecondary, width: "100%", marginTop: 4 }}>
             Nowa umowa
           </button>
         </div>
@@ -468,6 +509,37 @@ export default function AgreementNew() {
   );
 }
 
+// ——— STEP 0: Rola
+function StepRola({ data, update, goNext }: { data: WizardData; update: (p: Partial<WizardData>) => void; goNext: () => void }) {
+  const roles: { value: "client" | "contractor"; icon: string; label: string; desc: string }[] = [
+    { value: "client", icon: "🤝", label: "Klient / Zleceniodawca", desc: "Zamawiasz usługę, kupujesz, wynajmujesz" },
+    { value: "contractor", icon: "🔨", label: "Wykonawca / Sprzedający", desc: "Wykonujesz usługę, sprzedajesz, wynajmujesz" },
+  ];
+  return (
+    <div>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Tworzysz jako...</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 20, lineHeight: 1.5 }}>
+        Określ swoją rolę w tej umowie.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {roles.map(r => (
+          <div
+            key={r.value}
+            onClick={() => { update({ myRole: r.value }); goNext(); }}
+            style={{ ...cardStyle(false), display: "flex", alignItems: "center", gap: 14, padding: 18, cursor: "pointer" }}
+          >
+            <div style={{ fontSize: 32, flexShrink: 0 }}>{r.icon}</div>
+            <div>
+              <div style={{ color: "var(--color-foreground)", fontSize: 16, fontWeight: 700, marginBottom: 3 }}>{r.label}</div>
+              <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, lineHeight: 1.4 }}>{r.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ——— STEP 1: Kategoria
 function StepKategoria({ data, update, goNext }: { data: WizardData; update: (p: Partial<WizardData>) => void; goNext: () => void }) {
   const categories: { value: Category; label: string; icon: string }[] = [
@@ -525,45 +597,40 @@ function StepPodkategoria({ data, update, goNext }: { data: WizardData; update: 
 
 // ——— STEP 3: Strony
 function StepStrony({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
-  const PartyForm = ({ title, party, onChange }: { title: string; party: Party; onChange: (p: Party) => void }) => (
-    <div style={sectionCard}>
-      <SectionLabel>{title}</SectionLabel>
-      <div style={{ marginBottom: 8 }}>
-        <input
-          value={party.name}
-          onChange={e => onChange({ ...party, name: e.target.value })}
-          placeholder="Imię i nazwisko"
-          style={inputStyle}
-        />
+  const PartyForm = ({ title, party, onChange, highlight }: { title: string; party: Party; onChange: (p: Party) => void; highlight?: boolean }) => (
+    <div style={{ ...sectionCard, border: highlight ? "1.5px solid var(--color-primary)" : "1px solid var(--color-border)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <SectionLabel>{title}</SectionLabel>
+        {highlight && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--color-primary)", background: "color-mix(in srgb, var(--color-primary) 12%, transparent)", borderRadius: 20, padding: "2px 8px", whiteSpace: "nowrap", marginBottom: 8 }}>Twoje dane</span>}
       </div>
       <div style={{ marginBottom: 8 }}>
-        <input
-          value={party.phone}
-          onChange={e => onChange({ ...party, phone: e.target.value })}
-          placeholder="Telefon"
-          type="tel"
-          style={inputStyle}
-        />
+        <input value={party.name} onChange={e => onChange({ ...party, name: e.target.value })} placeholder="Imię i nazwisko" style={inputStyle} />
       </div>
-      <input
-        value={party.email}
-        onChange={e => onChange({ ...party, email: e.target.value })}
-        placeholder="Email (opcjonalnie)"
-        type="email"
-        style={inputStyle}
-      />
+      <div style={{ marginBottom: 8 }}>
+        <input value={party.phone} onChange={e => onChange({ ...party, phone: e.target.value })} placeholder="Telefon" type="tel" style={inputStyle} />
+      </div>
+      <input value={party.email} onChange={e => onChange({ ...party, email: e.target.value })} placeholder="Email (opcjonalnie)" type="email" style={inputStyle} />
     </div>
   );
   const clientLabel = data.category === "wynajem" ? "Najemca" : data.category === "sprzedaz" ? "Kupujący" : "Zleceniodawca";
   const contractorLabel = data.category === "wynajem" ? "Wynajmujący" : data.category === "sprzedaz" ? "Sprzedający" : "Wykonawca";
+  const iAmClient = data.myRole === "client";
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
         <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, margin: 0 }}>Strony umowy</h2>
         <span style={{ fontSize: 11, fontWeight: 700, color: "#16a34a", background: "color-mix(in srgb, #16a34a 12%, transparent)", border: "1px solid color-mix(in srgb, #16a34a 30%, transparent)", borderRadius: 20, padding: "2px 8px", whiteSpace: "nowrap" }}>🔒 Dane chronione</span>
       </div>
-      <PartyForm title={clientLabel} party={data.client} onChange={v => update({ client: v })} />
-      <PartyForm title={contractorLabel} party={data.contractor} onChange={v => update({ contractor: v })} />
+      <PartyForm title={clientLabel} party={data.client} onChange={v => update({ client: v })} highlight={iAmClient} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "4px 0 4px 2px" }}>
+        <div style={{ flex: 1, height: 1, background: "var(--color-border)" }} />
+        <span style={{ color: "var(--color-muted-foreground)", fontSize: 11 }}>druga strona</span>
+        <div style={{ flex: 1, height: 1, background: "var(--color-border)" }} />
+      </div>
+      <PartyForm title={contractorLabel} party={data.contractor} onChange={v => update({ contractor: v })} highlight={!iAmClient} />
+      <div style={{ marginTop: 8, padding: "10px 12px", borderRadius: 10, background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
+        <span style={{ color: "var(--color-muted-foreground)", fontSize: 12 }}>💡 Nie znasz danych drugiej strony? Wprowadź swoje i zaproś ją na końcu kreatora.</span>
+      </div>
     </div>
   );
 }
@@ -1353,42 +1420,94 @@ function StepPrzeglad({ data, steps, goToStep, warnings, totalPrice }: { data: W
 }
 
 // ——— STEP 14: Podpis
-function StepPodpis({ setSigned }: { data: WizardData; signed: boolean; setSigned: (v: boolean) => void }) {
+function StepPodpis({ data, update, setSigned }: { data: WizardData; update: (p: Partial<WizardData>) => void; signed: boolean; setSigned: (v: boolean) => void }) {
+  const [accepted, setAccepted] = useState(false);
+  const myParty = data.myRole === "contractor" ? data.contractor : data.client;
+  const otherParty = data.myRole === "contractor" ? data.client : data.contractor;
+  const myLabel = data.myRole === "contractor"
+    ? (data.category === "wynajem" ? "Wynajmujący" : data.category === "sprzedaz" ? "Sprzedający" : "Wykonawca")
+    : (data.category === "wynajem" ? "Najemca" : data.category === "sprzedaz" ? "Kupujący" : "Zleceniodawca");
+  const otherLabel = data.myRole === "contractor"
+    ? (data.category === "wynajem" ? "Najemca" : data.category === "sprzedaz" ? "Kupujący" : "Zleceniodawca")
+    : (data.category === "wynajem" ? "Wynajmujący" : data.category === "sprzedaz" ? "Sprzedający" : "Wykonawca");
+  const hasOtherContact = !!(otherParty.email || otherParty.phone || data.inviteContact);
+
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Podpis i aktywacja</h2>
-      <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 24, lineHeight: 1.5 }}>Wybierz sposób uruchomienia umowy.</p>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Podpis i zaproszenie</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 20, lineHeight: 1.5 }}>
+        Podpisz jako {myLabel.toLowerCase()} i zaproś drugą stronę.
+      </p>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <button
-          onClick={() => alert("Wysyłanie do drugiej strony...")}
-          style={{ ...btnPrimary, width: "100%", padding: "16px 0", fontSize: 15 }}
+      {/* Mój podpis */}
+      <div style={{ ...sectionCard, border: "1.5px solid var(--color-primary)", marginBottom: 16 }}>
+        <SectionLabel>Twój podpis ({myLabel})</SectionLabel>
+        <div style={{ color: "var(--color-foreground)", fontSize: 15, fontWeight: 700, marginBottom: 12 }}>
+          {myParty.name || "—"}
+        </div>
+        <div
+          onClick={() => setAccepted(v => !v)}
+          style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}
         >
-          📤 Wyślij do drugiej strony
-        </button>
+          <div style={{
+            width: 20, height: 20, borderRadius: 5, flexShrink: 0, marginTop: 1,
+            border: `2px solid ${accepted ? "var(--color-primary)" : "var(--color-border)"}`,
+            background: accepted ? "var(--color-primary)" : "transparent",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            {accepted && <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>}
+          </div>
+          <span style={{ color: "var(--color-foreground)", fontSize: 13, lineHeight: 1.5 }}>
+            Akceptuję warunki umowy i potwierdzam podpisanie jako {myLabel.toLowerCase()}.
+          </span>
+        </div>
+      </div>
 
+      {/* Zaproszenie drugiej strony */}
+      <div style={sectionCard}>
+        <SectionLabel>Zaproś {otherLabel.toLowerCase()}</SectionLabel>
+        {otherParty.name && (
+          <div style={{ color: "var(--color-foreground)", fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+            {otherParty.name}
+          </div>
+        )}
+        <input
+          value={data.inviteContact}
+          onChange={e => update({ inviteContact: e.target.value })}
+          placeholder="Email, telefon lub @nick"
+          style={{ ...inputStyle, marginBottom: 0 }}
+        />
+        {!hasOtherContact && (
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, marginTop: 6 }}>
+            Możesz też skopiować link i wysłać ręcznie po podpisaniu.
+          </div>
+        )}
+      </div>
+
+      {/* CTA */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 20 }}>
+        <button
+          onClick={() => { if (accepted) setSigned(true); }}
+          disabled={!accepted}
+          style={{ ...btnPrimary, width: "100%", padding: "16px 0", fontSize: 15, opacity: accepted ? 1 : 0.45, cursor: accepted ? "pointer" : "not-allowed" }}
+        >
+          ✍️ Podpisz{hasOtherContact ? " i wyślij zaproszenie" : " umowę"}
+        </button>
         <button
           onClick={() => alert("Zapisano jako szkic")}
-          style={{ ...btnSecondary, width: "100%", padding: "16px 0", fontSize: 15 }}
+          style={{ ...btnSecondary, width: "100%", padding: "14px 0", fontSize: 14 }}
         >
           💾 Zapisz jako szkic
         </button>
-
-        <button
-          onClick={() => setSigned(true)}
-          style={{ ...btnPrimary, width: "100%", padding: "16px 0", fontSize: 15, background: "#7c3aed" }}
-        >
-          ✍️ Podpisz i aktywuj
-        </button>
       </div>
 
-      <div style={{ marginTop: 24, padding: 16, borderRadius: 12, background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.3)" }}>
-        <div style={{ color: "#7c3aed", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Po aktywacji:</div>
-        <div style={{ color: "var(--color-muted-foreground)", fontSize: 13, lineHeight: 1.7 }}>
-          🔒 Umowa zostanie zablokowana do edycji<br />
-          💳 Depozyt oczekuje na wpłatę<br />
-          📱 Druga strona zostanie powiadomiona<br />
-          📄 Możesz pobrać PDF umowy
+      <div style={{ marginTop: 20, padding: 14, borderRadius: 12, background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.25)" }}>
+        <div style={{ color: "#7c3aed", fontSize: 11, fontWeight: 700, marginBottom: 6 }}>Po podpisaniu:</div>
+        <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, lineHeight: 1.8 }}>
+          🔒 Umowa zostaje zablokowana do edycji<br />
+          📤 Druga strona otrzymuje link do przeglądu i akceptacji<br />
+          💳 Depozyt aktywuje się po akceptacji obu stron<br />
+          📄 Możesz pobrać PDF
         </div>
       </div>
     </div>
