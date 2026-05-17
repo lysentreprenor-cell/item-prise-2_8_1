@@ -183,6 +183,153 @@ const INITIAL: WizardData = {
 };
 
 // ——— Style helpers
+// ——— LOCAL STORAGE HELPERS
+type ContractPhaseValue = "" | "awaiting_counterparty" | "awaiting_deposit" | "in_progress" | "awaiting_release" | "completed";
+
+interface SavedContract {
+  id: string;
+  contractId: string;
+  data: WizardData;
+  totalPrice: number;
+  phase: ContractPhaseValue;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const LS_DRAFT_KEY = "itemprise_draft";
+const LS_CONTRACTS_KEY = "itemprise_contracts";
+
+function loadDraft(): { data: WizardData; stepIndex: number; contractId: string } | null {
+  try {
+    const raw = localStorage.getItem(LS_DRAFT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveDraft(data: WizardData, stepIndex: number, contractId: string) {
+  try { localStorage.setItem(LS_DRAFT_KEY, JSON.stringify({ data, stepIndex, contractId })); } catch {}
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(LS_DRAFT_KEY); } catch {}
+}
+
+function loadContracts(): SavedContract[] {
+  try {
+    const raw = localStorage.getItem(LS_CONTRACTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveContract(contract: SavedContract) {
+  try {
+    const existing = loadContracts();
+    const idx = existing.findIndex(c => c.id === contract.id);
+    if (idx >= 0) existing[idx] = contract;
+    else existing.unshift(contract);
+    localStorage.setItem(LS_CONTRACTS_KEY, JSON.stringify(existing.slice(0, 50)));
+  } catch {}
+}
+
+// ——— HOME SCREEN
+function HomeScreen({ onNew, onResume, draft, contracts, onOpenContract }: {
+  onNew: () => void;
+  onResume: () => void;
+  draft: { data: WizardData; stepIndex: number } | null;
+  contracts: SavedContract[];
+  onOpenContract: (c: SavedContract) => void;
+}) {
+  const phaseLabel: Record<string, string> = {
+    awaiting_counterparty: "Oczekuje na akceptację",
+    awaiting_deposit: "Oczekuje na wpłatę",
+    in_progress: "W realizacji",
+    awaiting_release: "Oczekuje na zatwierdzenie",
+    completed: "Zakończona",
+  };
+  const phaseColor: Record<string, string> = {
+    awaiting_counterparty: "#f59e0b",
+    awaiting_deposit: "#f59e0b",
+    in_progress: "var(--color-primary)",
+    awaiting_release: "#16a34a",
+    completed: "#16a34a",
+  };
+  const catLabel: Record<string, string> = {
+    usluga: "Usługa", remont: "Remont", sprzedaz: "Sprzedaż",
+    wynajem: "Wynajem", wlasna: "Własna", pozyczka: "Pożyczka",
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--color-background)", maxWidth: "min(560px, 100vw)", margin: "0 auto", padding: "28px 16px 48px", boxSizing: "border-box" }}>
+      {/* Logo / header */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ color: "var(--color-primary)", fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 4 }}>ItemPrise</div>
+        <h1 style={{ color: "var(--color-foreground)", fontSize: 28, fontWeight: 900, margin: 0, lineHeight: 1.2 }}>Moje umowy</h1>
+      </div>
+
+      {/* Draft resume banner */}
+      {draft && (
+        <div style={{ background: "color-mix(in srgb, var(--color-primary) 10%, transparent)", border: "1.5px solid color-mix(in srgb, var(--color-primary) 40%, transparent)", borderRadius: 14, padding: "14px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 24, flexShrink: 0 }}>📝</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 700, marginBottom: 2 }}>Niedokończona umowa</div>
+            <div style={{ color: "var(--color-muted-foreground)", fontSize: 12 }}>{catLabel[draft.data.category] || "Bez kategorii"}{draft.data.subcategory ? ` › ${draft.data.subcategory}` : ""} · Krok {draft.stepIndex + 1}</div>
+          </div>
+          <button onClick={onResume} style={{ background: "var(--color-primary)", color: "#fff", border: "none", borderRadius: 10, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>Wznów</button>
+        </div>
+      )}
+
+      {/* New contract button */}
+      <button
+        onClick={onNew}
+        style={{ width: "100%", padding: "16px", borderRadius: 14, border: "none", background: "var(--color-primary)", color: "#fff", fontSize: 17, fontWeight: 800, cursor: "pointer", marginBottom: 28, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
+      >
+        <span style={{ fontSize: 20 }}>+</span> Nowa umowa
+      </button>
+
+      {/* Contracts list */}
+      {contracts.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--color-muted-foreground)" }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>📄</div>
+          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Brak umów</div>
+          <div style={{ fontSize: 13, lineHeight: 1.6 }}>Stwórz pierwszą umowę klikając przycisk powyżej.</div>
+        </div>
+      ) : (
+        <>
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
+            Ostatnie umowy
+          </div>
+          {contracts.map(c => (
+            <div key={c.id} onClick={() => onOpenContract(c)} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 14, padding: "14px 16px", marginBottom: 10, cursor: "pointer" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                <div>
+                  <div style={{ color: "var(--color-foreground)", fontSize: 15, fontWeight: 700, marginBottom: 2 }}>
+                    {catLabel[c.data.category] || "Umowa"}{c.data.subcategory ? ` › ${c.data.subcategory}` : ""}
+                  </div>
+                  <div style={{ color: "var(--color-muted-foreground)", fontSize: 12 }}>#{c.contractId} · {new Date(c.createdAt).toLocaleDateString("pl-PL")}</div>
+                </div>
+                <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 8 }}>
+                  {c.totalPrice > 0 && (
+                    <div style={{ color: "var(--color-primary)", fontSize: 15, fontWeight: 800 }}>{c.totalPrice.toLocaleString("pl-PL")} {c.data.currency}</div>
+                  )}
+                </div>
+              </div>
+              {c.phase && (
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 20, background: `color-mix(in srgb, ${phaseColor[c.phase] || "var(--color-border)"} 12%, transparent)`, border: `1px solid color-mix(in srgb, ${phaseColor[c.phase] || "var(--color-border)"} 30%, transparent)` }}>
+                  <div style={{ width: 6, height: 6, borderRadius: 3, background: phaseColor[c.phase] || "var(--color-border)" }} />
+                  <span style={{ color: phaseColor[c.phase] || "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700 }}>{phaseLabel[c.phase] || c.phase}</span>
+                </div>
+              )}
+              {c.data.inviteContact && (
+                <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, marginTop: 6 }}>Strona: {c.data.inviteContact}</div>
+              )}
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
 const inputStyle: React.CSSProperties = {
   width: "100%", padding: "12px 16px", borderRadius: 10,
   border: "1px solid var(--color-border)", background: "var(--color-card)",
@@ -416,12 +563,20 @@ function LiveTicker({ total, label, currency }: { total: number; label: string; 
 
 export default function AgreementNew() {
   const { defaultCurrency } = useAppStore();
-  const [stepIndex, setStepIndex] = useState(0);
-  const [data, setData] = useState<WizardData>({ ...INITIAL, currency: defaultCurrency });
+  const [view, setView] = useState<"home" | "wizard">(() => {
+    const hasDraft = !!loadDraft();
+    const hasContracts = loadContracts().length > 0;
+    return (hasDraft || hasContracts) ? "home" : "wizard";
+  });
+  const [savedContracts, setSavedContracts] = useState<SavedContract[]>(() => loadContracts());
+  const [draft, setDraft] = useState<{ data: WizardData; stepIndex: number } | null>(() => loadDraft());
+
+  const [stepIndex, setStepIndex] = useState(() => loadDraft()?.stepIndex ?? 0);
+  const [data, setData] = useState<WizardData>(() => loadDraft()?.data ?? { ...INITIAL, currency: defaultCurrency });
   const [contractPhase, setContractPhase] = useState<
     "" | "awaiting_counterparty" | "awaiting_deposit" | "in_progress" | "awaiting_release" | "completed"
   >("");
-  const [contractId] = useState(() => `UMW-${new Date().getFullYear()}-${Math.floor(Math.random() * 9000 + 1000)}`);
+  const [contractId, setContractId] = useState(() => loadDraft()?.contractId ?? `UMW-${new Date().getFullYear()}-${Math.floor(Math.random() * 9000 + 1000)}`);
   const [invitationDismissed, setInvitationDismissed] = useState(false);
   const [showDocument, setShowDocument] = useState(false);
 
@@ -434,7 +589,72 @@ export default function AgreementNew() {
     };
   }, []);
 
+  // Auto-save draft whenever wizard data or step changes
+  useEffect(() => {
+    if (view === "wizard" && !contractPhase) {
+      saveDraft(data, stepIndex, contractId);
+      setDraft({ data, stepIndex });
+    }
+  }, [data, stepIndex, contractId, view, contractPhase]);
+
+  // Save completed contract when phase is set
+  useEffect(() => {
+    if (contractPhase) {
+      const total = calcTotal(data);
+      const contract: SavedContract = {
+        id: contractId,
+        contractId,
+        data,
+        totalPrice: total,
+        phase: contractPhase,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      saveContract(contract);
+      clearDraft();
+      setDraft(null);
+      setSavedContracts(loadContracts());
+    }
+  }, [contractPhase]);
+
+  // Update contract phase in localStorage when it changes
+  useEffect(() => {
+    if (contractPhase) {
+      const existing = loadContracts();
+      const idx = existing.findIndex(c => c.contractId === contractId);
+      if (idx >= 0) {
+        existing[idx].phase = contractPhase;
+        existing[idx].updatedAt = new Date().toISOString();
+        try { localStorage.setItem(LS_CONTRACTS_KEY, JSON.stringify(existing)); } catch {}
+        setSavedContracts([...existing]);
+      }
+    }
+  }, [contractPhase]);
+
   const update = (patch: Partial<WizardData>) => setData(prev => ({ ...prev, ...patch }));
+
+  const startNewWizard = () => {
+    const newId = `UMW-${new Date().getFullYear()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+    setContractId(newId);
+    setData({ ...INITIAL, currency: defaultCurrency });
+    setStepIndex(0);
+    setContractPhase("");
+    setInvitationDismissed(false);
+    setShowDocument(false);
+    setView("wizard");
+  };
+
+  const resumeWizard = () => {
+    setView("wizard");
+  };
+
+  const openContract = (c: SavedContract) => {
+    setContractId(c.contractId);
+    setData(c.data);
+    setContractPhase(c.phase || "awaiting_counterparty");
+    setInvitationDismissed(true);
+    setView("wizard");
+  };
 
   const steps = getSteps(data.category);
   const totalSteps = steps.length;
@@ -508,6 +728,18 @@ export default function AgreementNew() {
     }
   };
 
+  if (view === "home") {
+    return (
+      <HomeScreen
+        onNew={startNewWizard}
+        onResume={resumeWizard}
+        draft={draft}
+        contracts={savedContracts}
+        onOpenContract={openContract}
+      />
+    );
+  }
+
   if (contractPhase) {
     if (contractPhase === "awaiting_counterparty" && !invitationDismissed) {
       return (
@@ -530,11 +762,8 @@ export default function AgreementNew() {
           showDocument={showDocument}
           setShowDocument={setShowDocument}
           onNewContract={() => {
-            setContractPhase("");
-            setStepIndex(0);
-            setInvitationDismissed(false);
-            setShowDocument(false);
-            setData({ ...INITIAL, currency: defaultCurrency });
+            setSavedContracts(loadContracts());
+            setView("home");
           }}
         />
         {showDocument && (
@@ -627,11 +856,10 @@ export default function AgreementNew() {
         <LiveTicker total={totalPrice} label={calcTickerLabel(data)} currency={data.currency} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button
-          onClick={goBack}
-          disabled={stepIndex === 0}
-          style={{ width: 56, height: 56, borderRadius: 28, border: "1.5px solid var(--color-border)", background: "transparent", color: "var(--color-muted-foreground)", fontSize: 26, cursor: stepIndex === 0 ? "not-allowed" : "pointer", opacity: stepIndex === 0 ? 0.3 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={stepIndex === 0 ? () => setView("home") : goBack}
+          style={{ width: 56, height: 56, borderRadius: 28, border: "1.5px solid var(--color-border)", background: "transparent", color: "var(--color-muted-foreground)", fontSize: 26, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
         >
-          ←
+          {stepIndex === 0 ? "⌂" : "←"}
         </button>
         <div style={{ color: "var(--color-muted-foreground)", fontSize: 13, fontWeight: 600 }}>{stepIndex + 1} / {totalSteps}</div>
         {currentStep !== "podpis" && (
