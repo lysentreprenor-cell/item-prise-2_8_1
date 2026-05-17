@@ -166,7 +166,7 @@ const sectionCard: React.CSSProperties = {
   background: "var(--color-card)", marginBottom: 12,
 };
 const tileGrid: React.CSSProperties = {
-  display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10,
+  display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8,
 };
 const btnPrimary: React.CSSProperties = {
   padding: "10px 20px", borderRadius: 10, border: "none",
@@ -450,7 +450,7 @@ export default function AgreementNew() {
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto" }}>
+      <div style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", overflowX: "hidden" }}>
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
@@ -553,15 +553,15 @@ function StepKategoria({ data, update, goNext }: { data: WizardData; update: (p:
     <div>
       <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Nowa umowa</h2>
       <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 18, lineHeight: 1.5 }}>Wybierz kategorię umowy.</p>
-      <div style={tileGrid}>
+      <div style={{ ...tileGrid, gridTemplateColumns: "1fr 1fr" }}>
         {categories.map(c => (
           <div
             key={c.value}
             onClick={() => { update({ category: c.value, subcategory: "" }); goNext(); }}
-            style={{ ...cardStyle(false), cursor: "pointer" }}
+            style={{ ...cardStyle(false), cursor: "pointer", display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", minWidth: 0 }}
           >
-            <div style={{ fontSize: 28, marginBottom: 6 }}>{c.icon}</div>
-            <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 700 }}>{c.label}</div>
+            <span style={{ fontSize: 22, flexShrink: 0 }}>{c.icon}</span>
+            <span style={{ color: "var(--color-foreground)", fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.label}</span>
           </div>
         ))}
       </div>
@@ -586,8 +586,8 @@ function StepPodkategoria({ data, update, goNext }: { data: WizardData; update: 
       <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 18, lineHeight: 1.5 }}>Wybierz rodzaj umowy.</p>
       <div style={tileGrid}>
         {subs.map(s => (
-          <div key={s} onClick={() => { update({ subcategory: s }); goNext(); }} style={{ ...cardStyle(false), cursor: "pointer" }}>
-            <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 600 }}>{s}</div>
+          <div key={s} onClick={() => { update({ subcategory: s }); goNext(); }} style={{ ...cardStyle(false), cursor: "pointer", padding: "12px 14px", minWidth: 0 }}>
+            <div style={{ color: "var(--color-foreground)", fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s}</div>
           </div>
         ))}
       </div>
