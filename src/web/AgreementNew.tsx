@@ -134,6 +134,7 @@ interface WizardData {
   protocolIssues: string;
   protocolFixDeadline: string;
   estimatedHours: number;
+  unitCount: number;
   rentalDays: number;
   rentalWeeks: number;
   rentalMonths: number;
@@ -162,7 +163,7 @@ const INITIAL: WizardData = {
   warranty: false, warrantyDays: 30, latePenalty: false, latePenaltyAmount: 50,
   protocolStatus: "", beforePhotos: false, afterPhotos: false,
   protocolDesc: "", protocolIssues: "", protocolFixDeadline: "", releaseDeposit: false,
-  estimatedHours: 0,
+  estimatedHours: 0, unitCount: 0,
   rentalDays: 0, rentalWeeks: 0, rentalMonths: 0,
   signed: false,
 };
@@ -739,6 +740,7 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
             : data.pricingMethod === "per_week" ? "Stawka tygodniowa"
             : data.pricingMethod === "per_day" ? "Stawka dzienna"
             : data.pricingMethod === "hourly" ? "Stawka za godzinę"
+            : data.pricingMethod === "unit" ? "Cena za sztukę"
             : "Kwota bazowa"}
           {" "}({data.currency})
         </SectionLabel>
@@ -753,7 +755,7 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
         {/* Za godzinę */}
         {data.pricingMethod === "hourly" && (
           <>
-            <SectionLabel>Szacowana liczba godzin</SectionLabel>
+            <SectionLabel>Liczba godzin</SectionLabel>
             <input
               type="number"
               value={data.estimatedHours || ""}
@@ -761,10 +763,44 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
               placeholder="np. 8"
               style={{ ...inputStyle, fontSize: 18, fontWeight: 600, marginBottom: 10 }}
             />
+            <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+              {[{ label: "1 h", h: 1 }, { label: "2 h", h: 2 }, { label: "4 h", h: 4 }, { label: "8 h", h: 8 }, { label: "16 h", h: 16 }, { label: "40 h", h: 40 }].map(s => (
+                <div key={s.h} onClick={() => update({ estimatedHours: s.h })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 13, fontWeight: data.estimatedHours === s.h ? 700 : 400, border: `1.5px solid ${data.estimatedHours === s.h ? "var(--color-primary)" : "var(--color-border)"}`, background: data.estimatedHours === s.h ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.estimatedHours === s.h ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>
+                  {s.label}
+                </div>
+              ))}
+            </div>
             {data.basePrice > 0 && data.estimatedHours > 0 && (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 10, background: "color-mix(in srgb, var(--color-primary) 10%, transparent)", border: "1px solid var(--color-primary)" }}>
                 <span style={{ color: "var(--color-muted-foreground)", fontSize: 14 }}>{data.estimatedHours} godz. × {data.basePrice.toLocaleString("pl-PL")} {data.currency}</span>
                 <span style={{ color: "var(--color-primary)", fontSize: 17, fontWeight: 800 }}>= {(data.basePrice * data.estimatedHours).toLocaleString("pl-PL")} {data.currency}</span>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Za sztukę */}
+        {data.pricingMethod === "unit" && (
+          <>
+            <SectionLabel>Liczba sztuk</SectionLabel>
+            <input
+              type="number"
+              value={data.unitCount || ""}
+              onChange={e => update({ unitCount: parseInt(e.target.value) || 0 })}
+              placeholder="np. 10"
+              style={{ ...inputStyle, fontSize: 18, fontWeight: 600, marginBottom: 10 }}
+            />
+            <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+              {[{ label: "1", u: 1 }, { label: "5", u: 5 }, { label: "10", u: 10 }, { label: "25", u: 25 }, { label: "50", u: 50 }, { label: "100", u: 100 }].map(s => (
+                <div key={s.u} onClick={() => update({ unitCount: s.u })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 13, fontWeight: data.unitCount === s.u ? 700 : 400, border: `1.5px solid ${data.unitCount === s.u ? "var(--color-primary)" : "var(--color-border)"}`, background: data.unitCount === s.u ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.unitCount === s.u ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>
+                  {s.label}
+                </div>
+              ))}
+            </div>
+            {data.basePrice > 0 && data.unitCount > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 10, background: "color-mix(in srgb, var(--color-primary) 10%, transparent)", border: "1px solid var(--color-primary)" }}>
+                <span style={{ color: "var(--color-muted-foreground)", fontSize: 14 }}>{data.unitCount} szt. × {data.basePrice.toLocaleString("pl-PL")} {data.currency}</span>
+                <span style={{ color: "var(--color-primary)", fontSize: 17, fontWeight: 800 }}>= {(data.basePrice * data.unitCount).toLocaleString("pl-PL")} {data.currency}</span>
               </div>
             )}
           </>
