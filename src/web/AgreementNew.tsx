@@ -133,6 +133,7 @@ interface WizardData {
   protocolDesc: string;
   protocolIssues: string;
   protocolFixDeadline: string;
+  estimatedHours: number;
   releaseDeposit: boolean;
   signed: boolean;
 }
@@ -158,6 +159,7 @@ const INITIAL: WizardData = {
   warranty: false, warrantyDays: 30, latePenalty: false, latePenaltyAmount: 50,
   protocolStatus: "", beforePhotos: false, afterPhotos: false,
   protocolDesc: "", protocolIssues: "", protocolFixDeadline: "", releaseDeposit: false,
+  estimatedHours: 0,
   signed: false,
 };
 
@@ -729,7 +731,7 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
       </div>
       {data.pricingMethod !== "stages" && <div style={sectionCard}>
         <SectionLabel>
-          {data.pricingMethod === "per_month" ? "Czynsz miesięczny" : "Kwota bazowa"}
+          {data.pricingMethod === "per_month" ? "Czynsz miesięczny" : data.pricingMethod === "hourly" ? "Stawka za godzinę" : "Kwota bazowa"}
           {" "}({data.currency})
         </SectionLabel>
         <input
@@ -739,6 +741,28 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
           placeholder="0"
           style={{ ...inputStyle, fontSize: 20, fontWeight: 700, marginBottom: 10 }}
         />
+        {data.pricingMethod === "hourly" && (
+          <>
+            <SectionLabel>Szacowana liczba godzin</SectionLabel>
+            <input
+              type="number"
+              value={data.estimatedHours || ""}
+              onChange={e => update({ estimatedHours: parseFloat(e.target.value) || 0 })}
+              placeholder="np. 8"
+              style={{ ...inputStyle, fontSize: 18, fontWeight: 600, marginBottom: 10 }}
+            />
+            {data.basePrice > 0 && data.estimatedHours > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 10, background: "color-mix(in srgb, var(--color-primary) 10%, transparent)", border: "1px solid var(--color-primary)" }}>
+                <span style={{ color: "var(--color-muted-foreground)", fontSize: 14 }}>
+                  {data.estimatedHours} godz. × {data.basePrice.toLocaleString("pl-PL")} {data.currency}
+                </span>
+                <span style={{ color: "var(--color-primary)", fontSize: 17, fontWeight: 800 }}>
+                  = {(data.basePrice * data.estimatedHours).toLocaleString("pl-PL")} {data.currency}
+                </span>
+              </div>
+            )}
+          </>
+        )}
         <SectionLabel>Waluta</SectionLabel>
         <div style={{ display: "flex", gap: 6 }}>
           {currencies.map(c => {
