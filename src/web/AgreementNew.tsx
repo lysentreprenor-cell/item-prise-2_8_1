@@ -73,6 +73,13 @@ interface ElectronicsDetails {
   consoleOnline: boolean;
 }
 
+interface SaleItem {
+  id: string;
+  name: string;
+  condition: string;
+  serial: string;
+}
+
 interface UnitItem {
   id: string;
   name: string;
@@ -142,6 +149,7 @@ interface WizardData {
   protocolFixDeadline: string;
   estimatedHours: number;
   unitItems: UnitItem[];
+  saleItems: SaleItem[];
   rentalDays: number;
   rentalWeeks: number;
   rentalMonths: number;
@@ -170,7 +178,7 @@ const INITIAL: WizardData = {
   warranty: false, warrantyDays: 30, latePenalty: false, latePenaltyAmount: 50,
   protocolStatus: "", beforePhotos: false, afterPhotos: false,
   protocolDesc: "", protocolIssues: "", protocolFixDeadline: "", releaseDeposit: false,
-  estimatedHours: 0, unitItems: [],
+  estimatedHours: 0, unitItems: [], saleItems: [],
   rentalDays: 0, rentalWeeks: 0, rentalMonths: 0,
   signed: false,
 };
@@ -1320,6 +1328,65 @@ function StepPomieszczenia({ data, update }: { data: WizardData; update: (p: Par
 }
 
 // ——— STEP 7b: Szczegóły sprzedaż/elektronika
+const CONDITIONS = ["Nowy", "Bardzo dobry", "Dobry", "Używany", "Uszkodzony"];
+
+function SaleItemsEditor({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
+  const items = data.saleItems;
+
+  const addItem = () => update({
+    saleItems: [...items, { id: Date.now().toString(), name: "", condition: "", serial: "" }],
+  });
+  const updateItem = (id: string, patch: Partial<SaleItem>) =>
+    update({ saleItems: items.map(i => i.id === id ? { ...i, ...patch } : i) });
+  const removeItem = (id: string) =>
+    update({ saleItems: items.filter(i => i.id !== id) });
+
+  return (
+    <div>
+      {items.length === 0 && (
+        <div style={{ padding: 16, borderRadius: 10, border: "1px dashed var(--color-border)", textAlign: "center", color: "var(--color-muted-foreground)", fontSize: 14, marginBottom: 10 }}>
+          Dodaj pierwszy przedmiot ↓
+        </div>
+      )}
+      {items.map((item, i) => (
+        <div key={item.id} style={{ ...sectionCard, marginBottom: 10, padding: "14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ color: "var(--color-primary)", fontSize: 11, fontWeight: 800, background: "color-mix(in srgb, var(--color-primary) 12%, transparent)", borderRadius: 4, padding: "2px 8px", flexShrink: 0 }}>{i + 1}</span>
+            <input
+              value={item.name}
+              onChange={e => updateItem(item.id, { name: e.target.value })}
+              placeholder="Nazwa przedmiotu (np. wiertarka, szlifierka…)"
+              style={{ ...inputStyle, flex: 1, padding: "8px 12px", fontSize: 15 }}
+            />
+            <button onClick={() => removeItem(item.id)} style={{ border: "none", background: "transparent", color: "var(--color-muted-foreground)", fontSize: 20, cursor: "pointer", padding: "4px", flexShrink: 0 }}>×</button>
+          </div>
+          <SectionLabel>Stan</SectionLabel>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+            {CONDITIONS.map(c => {
+              const active = item.condition === c;
+              return (
+                <div key={c} onClick={() => updateItem(item.id, { condition: c })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: active ? 700 : 400, border: `1.5px solid ${active ? "var(--color-primary)" : "var(--color-border)"}`, background: active ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: active ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>
+                  {c}
+                </div>
+              );
+            })}
+          </div>
+          <SectionLabel>Nr seryjny (opcjonalnie)</SectionLabel>
+          <input
+            value={item.serial}
+            onChange={e => updateItem(item.id, { serial: e.target.value })}
+            placeholder="opcjonalnie"
+            style={{ ...inputStyle, fontSize: 14 }}
+          />
+        </div>
+      ))}
+      <button onClick={addItem} style={{ ...btnSecondary, width: "100%", padding: 12, fontSize: 15, borderStyle: "dashed" }}>
+        + Dodaj przedmiot
+      </button>
+    </div>
+  );
+}
+
 function StepSzczegolySprzedaz({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
   const isElectronics = data.subcategory === "Elektronika";
   const isCar = data.subcategory === "Auto/pojazd";
@@ -1395,15 +1462,9 @@ function StepSzczegolySprzedaz({ data, update }: { data: WizardData; update: (p:
 
   if (!isElectronics) return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Szczegóły sprzedaży</h2>
-      <div style={sectionCard}>
-        <SectionLabel>Opis przedmiotu</SectionLabel>
-        <textarea value={data.itemDescription} onChange={e => update({ itemDescription: e.target.value })} placeholder="Opisz przedmiot sprzedaży..." style={textareaStyle} />
-        <SectionLabel>Stan</SectionLabel>
-        <input value={data.itemCondition} onChange={e => update({ itemCondition: e.target.value })} placeholder="np. używany, sprawny" style={inputStyle} />
-        <SectionLabel>Nr seryjny (opcjonalnie)</SectionLabel>
-        <input value={data.itemSerial} onChange={e => update({ itemSerial: e.target.value })} placeholder="opcjonalnie" style={inputStyle} />
-      </div>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Szczegóły sprzedaży</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 16 }}>Dodaj wszystkie sprzedawane przedmioty.</p>
+      <SaleItemsEditor data={data} update={update} />
     </div>
   );
 
