@@ -421,6 +421,9 @@ export default function AgreementNew() {
   const [contractPhase, setContractPhase] = useState<
     "" | "awaiting_counterparty" | "awaiting_deposit" | "in_progress" | "awaiting_release" | "completed"
   >("");
+  const [contractId] = useState(() => `UMW-${new Date().getFullYear()}-${Math.floor(Math.random() * 9000 + 1000)}`);
+  const [invitationDismissed, setInvitationDismissed] = useState(false);
+  const [showDocument, setShowDocument] = useState(false);
 
   useEffect(() => {
     document.body.style.overflowX = "hidden";
@@ -506,18 +509,38 @@ export default function AgreementNew() {
   };
 
   if (contractPhase) {
+    if (contractPhase === "awaiting_counterparty" && !invitationDismissed) {
+      return (
+        <InvitationScreen
+          data={data}
+          contractId={contractId}
+          totalPrice={totalPrice}
+          onContinue={() => setInvitationDismissed(true)}
+        />
+      );
+    }
     return (
-      <ContractLifecycle
-        data={data}
-        phase={contractPhase}
-        setPhase={setContractPhase}
-        totalPrice={totalPrice}
-        onNewContract={() => {
-          setContractPhase("");
-          setStepIndex(0);
-          setData({ ...INITIAL, currency: defaultCurrency });
-        }}
-      />
+      <>
+        <ContractLifecycle
+          data={data}
+          phase={contractPhase}
+          setPhase={setContractPhase}
+          totalPrice={totalPrice}
+          contractId={contractId}
+          showDocument={showDocument}
+          setShowDocument={setShowDocument}
+          onNewContract={() => {
+            setContractPhase("");
+            setStepIndex(0);
+            setInvitationDismissed(false);
+            setShowDocument(false);
+            setData({ ...INITIAL, currency: defaultCurrency });
+          }}
+        />
+        {showDocument && (
+          <ContractDocument data={data} contractId={contractId} onClose={() => setShowDocument(false)} />
+        )}
+      </>
     );
   }
 
@@ -2187,16 +2210,228 @@ function StepPodpis({ data, update, onSign }: { data: WizardData; update: (p: Pa
   );
 }
 
+// ——— SHARE HELPER
+async function shareContract(contractId: string, data: WizardData, totalPrice: number) {
+  const category = (CATEGORY_LABELS as Record<string, string>)[data.category] ?? data.category;
+  const sub = data.subcategory ? ` › ${data.subcategory}` : "";
+  const invited = data.inviteContact || "uczestnik";
+  const amount = totalPrice > 0 ? `${totalPrice.toLocaleString("pl-PL")} ${data.currency}` : "do ustalenia";
+  const url = `${window.location.origin}/kontrakt/${contractId}`;
+  const text = `Zaproszenie do umowy #${contractId}\n\n📋 ${category}${sub}\n💰 Kwota: ${amount}\n👤 Wysłał/a: ${invited}\n\nKliknij, żeby przejrzeć i podpisać umowę:`;
+  if (navigator.share) {
+    try { await navigator.share({ title: `Umowa #${contractId}`, text, url }); } catch {}
+  } else {
+    await navigator.clipboard.writeText(`${text}\n${url}`);
+  }
+}
+
+// ——— INVITATION SCREEN (shown right after signing)
+function InvitationScreen({ data, contractId, totalPrice, onContinue }: {
+  data: WizardData; contractId: string; totalPrice: number; onContinue: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const category = (CATEGORY_LABELS as Record<string, string>)[data.category] ?? data.category;
+  const invited = data.inviteContact || "—";
+  const url = `${window.location.origin}/kontrakt/${contractId}`;
+
+  const handleShare = async () => {
+    await shareContract(contractId, data, totalPrice);
+  };
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--color-background)", maxWidth: "min(560px, 100vw)", margin: "0 auto", padding: "32px 16px 48px", boxSizing: "border-box" }}>
+      {/* Sukces */}
+      <div style={{ textAlign: "center", marginBottom: 24 }}>
+        <div style={{ fontSize: 56, marginBottom: 10 }}>✅</div>
+        <h2 style={{ color: "var(--color-foreground)", fontSize: 26, fontWeight: 800, marginBottom: 6 }}>Umowa podpisana!</h2>
+        <div style={{ color: "var(--color-muted-foreground)", fontSize: 14 }}>Nr umowy: <span style={{ color: "var(--color-primary)", fontWeight: 700 }}>#{contractId}</span></div>
+      </div>
+
+      {/* Mini karta umowy */}
+      <div style={{ ...sectionCard, border: "1.5px solid var(--color-primary)", marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <span style={{ color: "var(--color-primary)", fontSize: 13, fontWeight: 700 }}>{category}{data.subcategory ? ` › ${data.subcategory}` : ""}</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <span style={{ color: "var(--color-muted-foreground)", fontSize: 13 }}>Kwota</span>
+          <span style={{ color: "var(--color-foreground)", fontSize: 17, fontWeight: 800 }}>{totalPrice > 0 ? `${totalPrice.toLocaleString("pl-PL")} ${data.currency}` : "Do ustalenia"}</span>
+        </div>
+        {data.deadlineSingle && (
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+            <span style={{ color: "var(--color-muted-foreground)", fontSize: 13 }}>Termin</span>
+            <span style={{ color: "var(--color-foreground)", fontSize: 13, fontWeight: 600 }}>{data.deadlineSingle}</span>
+          </div>
+        )}
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <span style={{ color: "var(--color-muted-foreground)", fontSize: 13 }}>Zaproszono</span>
+          <span style={{ color: "var(--color-foreground)", fontSize: 13, fontWeight: 600 }}>{invited}</span>
+        </div>
+      </div>
+
+      {/* Share buttons */}
+      <div style={{ marginBottom: 20 }}>
+        <button
+          onClick={handleShare}
+          style={{ ...btnPrimary, width: "100%", padding: "15px", fontSize: 16, marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        >
+          📤 Udostępnij umowę
+        </button>
+        <button
+          onClick={handleCopy}
+          style={{ ...btnSecondary, width: "100%", padding: "12px", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        >
+          {copied ? "✅ Skopiowano!" : "📋 Kopiuj link do umowy"}
+        </button>
+      </div>
+
+      {/* Jak to działa */}
+      <div style={{ ...sectionCard, marginBottom: 20 }}>
+        <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Jak to działa?</div>
+        {[
+          { n: "1", t: "Wyślij zaproszenie drugiej stronie" },
+          { n: "2", t: "Druga strona przegląda i podpisuje umowę" },
+          { n: "3", t: "Wpłata środków na zabezpieczony escrow" },
+          { n: "4", t: "Po wykonaniu pracy zatwierdzasz odbiór" },
+          { n: "5", t: "Środki trafiają do wykonawcy" },
+        ].map(s => (
+          <div key={s.n} style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 10 }}>
+            <div style={{ width: 24, height: 24, borderRadius: 12, background: "var(--color-primary)", color: "#fff", fontSize: 12, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{s.n}</div>
+            <span style={{ color: "var(--color-muted-foreground)", fontSize: 14, lineHeight: 1.5, paddingTop: 2 }}>{s.t}</span>
+          </div>
+        ))}
+      </div>
+
+      <button onClick={onContinue} style={{ ...btnSecondary, width: "100%", padding: "13px", fontSize: 15 }}>
+        → Śledź umowę na żywo
+      </button>
+    </div>
+  );
+}
+
+// ——— CONTRACT DOCUMENT OVERLAY
+function ContractDocument({ data, contractId, onClose }: { data: WizardData; contractId: string; onClose: () => void }) {
+  const totalPrice = calcTotal(data);
+  const category = (CATEGORY_LABELS as Record<string, string>)[data.category] ?? data.category;
+  const clientLabel = data.category === "wynajem" ? "Najemca" : data.category === "sprzedaz" ? "Kupujący" : "Zleceniodawca";
+  const contractorLabel = data.category === "wynajem" ? "Wynajmujący" : data.category === "sprzedaz" ? "Sprzedający" : "Wykonawca";
+  const today = new Date().toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" });
+
+  const pricingLabel = ({
+    fixed: "Cena ryczałtowa", hourly: "Stawka godzinowa", unit: "Za sztukę",
+    stages: "Płatność etapami", per_day: "Za dzień", per_week: "Za tydzień", per_month: "Za miesiąc",
+    m2: "Za m²", materials_labor: "Materiały + robocizna",
+  } as Record<string, string>)[data.pricingMethod] ?? data.pricingMethod;
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 100, overflowY: "auto", padding: "16px" }}>
+      <div style={{ background: "var(--color-background)", borderRadius: 16, maxWidth: "min(540px, 100%)", margin: "0 auto", padding: "24px 20px 32px", boxSizing: "border-box", position: "relative" }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+          <div>
+            <div style={{ color: "var(--color-primary)", fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Podgląd umowy</div>
+            <div style={{ color: "var(--color-foreground)", fontSize: 18, fontWeight: 800 }}>#{contractId}</div>
+          </div>
+          <button onClick={onClose} style={{ border: "none", background: "transparent", color: "var(--color-muted-foreground)", fontSize: 24, cursor: "pointer", padding: 4 }}>×</button>
+        </div>
+
+        {/* Document content */}
+        <div style={{ fontFamily: "'Georgia', serif", color: "var(--color-foreground)", lineHeight: 1.7 }}>
+          <div style={{ textAlign: "center", marginBottom: 20, borderBottom: "1px solid var(--color-border)", paddingBottom: 16 }}>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>UMOWA NR #{contractId}</div>
+            <div style={{ fontSize: 13, color: "var(--color-muted-foreground)" }}>z dnia {today}</div>
+          </div>
+
+          {[
+            { par: "§1. STRONY UMOWY", content: (
+              <div style={{ fontSize: 13 }}>
+                <p><b>{clientLabel}:</b> {data.client.name || data.inviteContact || "—"}</p>
+                <p><b>{contractorLabel}:</b> {data.contractor.name || "—"}</p>
+              </div>
+            )},
+            { par: "§2. PRZEDMIOT UMOWY", content: (
+              <div style={{ fontSize: 13 }}>
+                <p><b>Kategoria:</b> {category}{data.subcategory ? ` › ${data.subcategory}` : ""}</p>
+                {data.scopeDescription && <p><b>Opis:</b> {data.scopeDescription}</p>}
+                {data.customDesc && <p>{data.customDesc}</p>}
+                {data.saleItems.length > 0 && data.saleItems.map((i, idx) => (
+                  <p key={i.id}>{idx + 1}. {i.name}{i.condition ? ` — ${i.condition}` : ""}{i.serial ? ` (nr: ${i.serial})` : ""}</p>
+                ))}
+              </div>
+            )},
+            { par: "§3. WYNAGRODZENIE", content: (
+              <div style={{ fontSize: 13 }}>
+                <p><b>Model rozliczenia:</b> {pricingLabel}</p>
+                <p><b>Kwota łączna:</b> {totalPrice.toLocaleString("pl-PL")} {data.currency}</p>
+                {data.paymentMethod && <p><b>Metoda płatności:</b> {({ upfront: "Z góry", after: "Po wykonaniu", stages: "Etapami", deposit: "Depozyt escrow", partial_deposit: "Częściowy depozyt" } as Record<string,string>)[data.paymentMethod] ?? data.paymentMethod}</p>}
+                {data.rentalDeposit > 0 && <p><b>Kaucja:</b> {data.rentalDeposit.toLocaleString("pl-PL")} {data.currency}</p>}
+              </div>
+            )},
+            { par: "§4. TERMIN", content: (
+              <div style={{ fontSize: 13 }}>
+                {data.deadlineSingle && <p><b>Data realizacji:</b> {data.deadlineSingle}</p>}
+                {data.deadlineFrom && <p><b>Od:</b> {data.deadlineFrom}</p>}
+                {data.deadlineTo && <p><b>Do:</b> {data.deadlineTo}</p>}
+                {data.rentalFrom && <p><b>Data wydania:</b> {data.rentalFrom}</p>}
+                {data.rentalTo && <p><b>Data zwrotu:</b> {data.rentalTo}</p>}
+                {data.deadlineType === "tbd" && <p>Termin do uzgodnienia przez strony.</p>}
+              </div>
+            )},
+            { par: "§5. WARUNKI", content: (
+              <div style={{ fontSize: 13 }}>
+                {data.warranty && <p><b>Gwarancja:</b> {data.warrantyDays} dni</p>}
+                {data.latePenalty && <p><b>Kara za opóźnienie:</b> {data.latePenaltyAmount} {data.currency}/dzień</p>}
+                {!data.warranty && !data.latePenalty && <p>Bez dodatkowych warunków.</p>}
+              </div>
+            )},
+            { par: "§6. PROTOKÓŁ ODBIORU", content: (
+              <div style={{ fontSize: 13 }}>
+                <p>Wymagany protokół odbioru przed zwolnieniem środków z depozytu.</p>
+                {data.protocolDesc && <p><b>Uwagi:</b> {data.protocolDesc}</p>}
+              </div>
+            )},
+          ].map(s => (
+            <div key={s.par} style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, color: "var(--color-primary)" }}>{s.par}</div>
+              {s.content}
+            </div>
+          ))}
+
+          <div style={{ marginTop: 24, paddingTop: 16, borderTop: "1px solid var(--color-border)", display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--color-muted-foreground)" }}>
+            <div>Podpis {clientLabel}: ___________</div>
+            <div>Podpis {contractorLabel}: ___________</div>
+          </div>
+        </div>
+
+        {/* Share from document */}
+        <button
+          onClick={() => shareContract(contractId, data, totalPrice)}
+          style={{ ...btnPrimary, width: "100%", padding: "13px", fontSize: 15, marginTop: 20, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        >
+          📤 Udostępnij dokument
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ——— CONTRACT LIFECYCLE (post-wizard escrow flow)
 type ContractPhase = "" | "awaiting_counterparty" | "awaiting_deposit" | "in_progress" | "awaiting_release" | "completed";
 
 function ContractLifecycle({
-  data, phase, setPhase, totalPrice, onNewContract,
+  data, phase, setPhase, totalPrice, contractId, showDocument, setShowDocument, onNewContract,
 }: {
   data: WizardData;
   phase: ContractPhase;
   setPhase: (p: ContractPhase) => void;
   totalPrice: number;
+  contractId: string;
+  showDocument: boolean;
+  setShowDocument: (v: boolean) => void;
   onNewContract: () => void;
 }) {
   const isClient = data.myRole === "client";
@@ -2233,12 +2468,18 @@ function ContractLifecycle({
 
   const cta = getCTA();
   const isFinished = phase === "completed";
+  const phaseTip: Record<string, string> = {
+    awaiting_deposit: "Środki trafiają na zabezpieczony rachunek escrow. Wykonawca nie otrzyma ich dopóki nie zatwierdzisz odbioru.",
+    in_progress: "Prace w toku. Otrzymasz powiadomienie gdy wykonawca zgłosi ukończenie.",
+    awaiting_release: "Sprawdź wykonaną pracę przed zatwierdzeniem. Masz zastrzeżenia? Możesz poprosić o poprawki.",
+  };
+  const currentTip = phaseTip[phase];
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--color-background)", maxWidth: "min(560px, 100vw)", margin: "0 auto", padding: "24px 16px 40px", boxSizing: "border-box" }}>
+    <div style={{ minHeight: "100vh", background: "var(--color-background)", maxWidth: "min(560px, 100vw)", margin: "0 auto", padding: "20px 16px 40px", boxSizing: "border-box" }}>
 
       {/* Header */}
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 16 }}>
         {isFinished ? (
           <>
             <div style={{ fontSize: 48, marginBottom: 10, textAlign: "center" }}>🎉</div>
@@ -2249,8 +2490,17 @@ function ContractLifecycle({
           </>
         ) : (
           <>
-            <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Umowa w toku</h2>
-            <p style={{ color: "var(--color-muted-foreground)", fontSize: 14, lineHeight: 1.5 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+              <div>
+                <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 }}>📄 Umowa #{contractId}</div>
+                <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, margin: 0 }}>Umowa w toku</h2>
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => shareContract(contractId, data, totalPrice)} title="Udostępnij" style={{ width: 38, height: 38, borderRadius: 19, border: "1.5px solid var(--color-border)", background: "var(--color-card)", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>📤</button>
+                <button onClick={() => setShowDocument(true)} title="Podgląd umowy" style={{ width: 38, height: 38, borderRadius: 19, border: "1.5px solid var(--color-border)", background: "var(--color-card)", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>📋</button>
+              </div>
+            </div>
+            <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, lineHeight: 1.5, margin: 0 }}>
               Ty: <b>{myParty.name || "—"}</b> · Druga strona: <b>{otherParty.name || invited}</b>
             </p>
           </>
@@ -2312,6 +2562,29 @@ function ContractLifecycle({
           );
         })}
       </div>
+
+      {/* Context tip */}
+      {currentTip && (
+        <div style={{ display: "flex", gap: 10, padding: "10px 14px", borderRadius: 10, background: "color-mix(in srgb, var(--color-primary) 8%, transparent)", border: "1px solid color-mix(in srgb, var(--color-primary) 25%, transparent)", marginBottom: 16 }}>
+          <span style={{ fontSize: 16, flexShrink: 0 }}>💡</span>
+          <span style={{ color: "var(--color-muted-foreground)", fontSize: 13, lineHeight: 1.6 }}>{currentTip}</span>
+        </div>
+      )}
+
+      {/* Awaiting counterparty: re-share option */}
+      {phase === "awaiting_counterparty" && (
+        <div style={{ ...sectionCard, marginBottom: 16 }}>
+          <div style={{ color: "var(--color-foreground)", fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+            Zaproszono: <span style={{ color: "var(--color-primary)" }}>{invited}</span>
+          </div>
+          <button
+            onClick={() => shareContract(contractId, data, totalPrice)}
+            style={{ ...btnSecondary, width: "100%", padding: "10px", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+          >
+            📤 Wyślij zaproszenie ponownie
+          </button>
+        </div>
+      )}
 
       {/* CTA */}
       {cta && (
