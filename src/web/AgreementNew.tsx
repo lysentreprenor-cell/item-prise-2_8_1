@@ -7,12 +7,19 @@ import { useLang } from "@/context/LanguageContext";
 type ContractType = "service" | "renovation" | "transport" | "sale" | "loan" | "other";
 type PaymentModel = "full_deposit" | "upfront_deposit" | "custom";
 
+interface StageItem {
+  name: string;
+  qty: number;
+  unitPrice: number;
+}
+
 interface Stage {
   id: string;
   name: string;
   icon: string;
   amount: string;
   deadline: string;
+  items: StageItem[];
 }
 
 interface Room {
@@ -65,6 +72,12 @@ const STAGE_PRESETS = [
 const ROOM_PRESETS = ["Salon", "Sypialnia", "Łazienka", "Kuchnia", "Przedpokój", "Gabinet", "Taras", "Garaż"];
 const RATE_CHIPS = [80, 120, 160, 200, 280, 350];
 const CURRENCIES: CurrencyCode[] = ["PLN", "EUR", "USD", "GBP", "CZK"];
+
+// Detailed item presets for trades that need per-unit pricing
+const DETAILED_PRESETS: Record<string, string[]> = {
+  "Instalacje el.": ["Gniazdko", "Punkt świetlny", "Łącznik/włącznik", "Obwód", "Rozdzielnia (moduł)", "Przewód mb"],
+  "Hydraulika":     ["Punkt wod-kan", "Grzejnik", "Bateria/zawór", "Podejście", "Rura mb", "Odpływ"],
+};
 
 const PAYMENT_OPTS: { value: PaymentModel; label: string; icon: string; desc: string }[] = [
   { value: "full_deposit", label: "Całość w depozycie", icon: "🔒", desc: "Środki blokowane do finałowego odbioru" },
@@ -154,7 +167,11 @@ export default function AgreementNew() {
   const currSym = data.currency;
 
   const roomsTotal = data.rooms.reduce((s, r) => s + r.area * r.pricePerM2, 0);
-  const stagesTotal = data.stages.reduce((s, st) => s + (parseFloat(st.amount) || 0), 0);
+  const stageValue = (st: Stage) => {
+    const itemsTotal = st.items.reduce((s, it) => s + it.qty * it.unitPrice, 0);
+    return itemsTotal > 0 ? itemsTotal : parseFloat(st.amount) || 0;
+  };
+  const stagesTotal = data.stages.reduce((s, st) => s + stageValue(st), 0);
   const renovationBase = roomsTotal > 0 ? roomsTotal : stagesTotal;
   const total = isRenovation ? renovationBase + data.materialsValue : data.lumpSumPrice;
 
@@ -168,7 +185,7 @@ export default function AgreementNew() {
     : total * (data.depositPercent / 100);
 
   const addStage = (name: string, icon: string) =>
-    update({ stages: [...data.stages, { id: Date.now().toString(), name, icon, amount: "", deadline: "" }] });
+    update({ stages: [...data.stages, { id: Date.now().toString(), name, icon, amount: "", deadline: "", items: DETAILED_PRESETS[name] ? DETAILED_PRESETS[name].map(n => ({ name: n, qty: 0, unitPrice: 0 })) : [] }] });
   const updateStage = (id: string, patch: Partial<Stage>) =>
     update({ stages: data.stages.map(s => s.id === id ? { ...s, ...patch } : s) });
   const removeStage = (id: string) => update({ stages: data.stages.filter(s => s.id !== id) });
@@ -286,23 +303,37 @@ export default function AgreementNew() {
 }
 
 // ——— Step 1: Type + currency + deadline
-function StepType({ data, update, currSym }: { data: FormData; update: (u: Partial<FormData>) => void; currSym: string }) {
+function StepType({ data, update }: { data: FormData; update: (u: Partial<FormData>) => void; currSym: string }) {
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Jaki rodzaj umowy?</h2>
-      <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 20, lineHeight: 1.5 }}>Typ umowy wyznacza kolejne kroki kreatora.</p>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 20, fontWeight: 800, marginBottom: 2 }}>Nowa umowa</h2>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 24 }}>
+      {/* Currency first — always visible */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 14, marginTop: 8 }}>
+        {CURRENCIES.map(c => {
+          const active = data.currency === c;
+          return (
+            <div key={c} onClick={() => update({ currency: c })} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 8, border: `1.5px solid ${active ? "var(--color-primary)" : "var(--color-border)"}`, background: active ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", cursor: "pointer" }}>
+              <div style={{ color: active ? "var(--color-primary)" : "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700 }}>{c}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <label style={{ ...labelStyle, marginBottom: 6 }}>Typ umowy</label>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
         {CONTRACT_TYPES.map(opt => {
           const active = data.contractType === opt.value;
           return (
-            <div key={opt.value} onClick={() => update({ contractType: opt.value })} style={card(active)}>
-              <div style={{ fontSize: 24, marginBottom: 6 }}>{opt.icon}</div>
-              <div style={{ color: active ? "var(--color-primary)" : "var(--color-foreground)", fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{opt.label}</div>
-              <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, lineHeight: 1.4 }}>{opt.desc}</div>
-              {active && (
-                <div style={{ position: "absolute", top: 8, right: 8, width: 18, height: 18, borderRadius: 9, background: "var(--color-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 10, fontWeight: 800 }}>✓</div>
-              )}
+            <div key={opt.value} onClick={() => update({ contractType: opt.value })} style={{ ...card(active), padding: "10px 12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 18 }}>{opt.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ color: active ? "var(--color-primary)" : "var(--color-foreground)", fontSize: 13, fontWeight: 700 }}>{opt.label}</div>
+                  <div style={{ color: "var(--color-muted-foreground)", fontSize: 10, lineHeight: 1.3, marginTop: 1 }}>{opt.desc}</div>
+                </div>
+                {active && <div style={{ width: 16, height: 16, borderRadius: 8, background: "var(--color-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 9, fontWeight: 800, flexShrink: 0 }}>✓</div>}
+              </div>
             </div>
           );
         })}
@@ -313,20 +344,8 @@ function StepType({ data, update, currSym }: { data: FormData; update: (u: Parti
         value={data.deadline}
         onChange={e => update({ deadline: e.target.value })}
         placeholder="np. 2025-08-31"
-        style={{ ...inputStyle, marginBottom: 20 }}
+        style={inputStyle}
       />
-
-      <label style={labelStyle}>Waluta rozliczeń</label>
-      <div style={{ display: "flex", gap: 8 }}>
-        {CURRENCIES.map(c => {
-          const active = data.currency === c;
-          return (
-            <div key={c} onClick={() => update({ currency: c })} style={{ flex: 1, textAlign: "center", padding: "10px 4px", borderRadius: 10, border: `1.5px solid ${active ? "var(--color-primary)" : "var(--color-border)"}`, background: active ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", cursor: "pointer" }}>
-              <div style={{ color: active ? "var(--color-primary)" : "var(--color-foreground)", fontSize: 12, fontWeight: 700 }}>{c}</div>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
@@ -343,30 +362,66 @@ function StepStages({ data, addStage, updateStage, removeStage, currSym, stagesT
       <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Etapy projektu</h2>
       <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 16, lineHeight: 1.5 }}>Podziel remont na fazy z osobnymi terminami i kwotami.</p>
 
-      {data.stages.map((s, i) => (
-        <div key={s.id} style={{ background: "var(--color-card)", borderRadius: 12, border: "1px solid var(--color-border)", padding: 14, marginBottom: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <span style={{ background: "color-mix(in srgb, var(--color-primary) 15%, transparent)", color: "var(--color-primary)", fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap" }}>Etap {i + 1}</span>
-            <span style={{ fontSize: 16 }}>{s.icon}</span>
-            <input
-              value={s.name}
-              onChange={e => updateStage(s.id, { name: e.target.value })}
-              style={{ flex: 1, background: "transparent", border: "none", color: "var(--color-foreground)", fontSize: 14, fontWeight: 700, outline: "none", minWidth: 0 }}
-            />
-            <span onClick={() => removeStage(s.id)} style={{ color: "var(--color-muted-foreground)", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>✕</span>
-          </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10, color: "var(--color-muted-foreground)", fontWeight: 600, marginBottom: 4, textTransform: "uppercase" }}>Kwota ({currSym})</div>
-              <input type="number" value={s.amount} onChange={e => updateStage(s.id, { amount: e.target.value })} placeholder="0" style={smallInputStyle} />
+      {data.stages.map((s, i) => {
+        const hasDetail = s.items.length > 0;
+        const itemsTotal = s.items.reduce((sum, it) => sum + it.qty * it.unitPrice, 0);
+        const displayAmount = hasDetail && itemsTotal > 0 ? itemsTotal : parseFloat(s.amount) || 0;
+        return (
+          <div key={s.id} style={{ background: "var(--color-card)", borderRadius: 12, border: "1px solid var(--color-border)", padding: 14, marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <span style={{ background: "color-mix(in srgb, var(--color-primary) 15%, transparent)", color: "var(--color-primary)", fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap" }}>Etap {i + 1}</span>
+              <span style={{ fontSize: 16 }}>{s.icon}</span>
+              <input value={s.name} onChange={e => updateStage(s.id, { name: e.target.value })} style={{ flex: 1, background: "transparent", border: "none", color: "var(--color-foreground)", fontSize: 14, fontWeight: 700, outline: "none", minWidth: 0 }} />
+              <span onClick={() => removeStage(s.id)} style={{ color: "var(--color-muted-foreground)", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>✕</span>
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10, color: "var(--color-muted-foreground)", fontWeight: 600, marginBottom: 4, textTransform: "uppercase" }}>Termin</div>
-              <input value={s.deadline} onChange={e => updateStage(s.id, { deadline: e.target.value })} placeholder="RRRR-MM-DD" style={smallInputStyle} />
+
+            {/* Detailed item pricing for electrical/plumbing */}
+            {hasDetail && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 10, color: "var(--color-muted-foreground)", fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>Wycena punktowa</div>
+                {s.items.map((it, idx) => {
+                  const sub = it.qty * it.unitPrice;
+                  return (
+                    <div key={idx} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                      <span style={{ flex: 1.2, color: "var(--color-muted-foreground)", fontSize: 12 }}>{it.name}</span>
+                      <input
+                        type="number" placeholder="szt." value={it.qty || ""}
+                        onChange={e => { const items = [...s.items]; items[idx] = { ...it, qty: parseInt(e.target.value) || 0 }; updateStage(s.id, { items }); }}
+                        style={{ width: 52, padding: "6px 6px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-background)", color: "var(--color-foreground)", fontSize: 12, textAlign: "center" }}
+                      />
+                      <span style={{ color: "var(--color-muted-foreground)", fontSize: 11 }}>×</span>
+                      <input
+                        type="number" placeholder={currSym} value={it.unitPrice || ""}
+                        onChange={e => { const items = [...s.items]; items[idx] = { ...it, unitPrice: parseFloat(e.target.value) || 0 }; updateStage(s.id, { items }); }}
+                        style={{ width: 68, padding: "6px 6px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-background)", color: "var(--color-foreground)", fontSize: 12, textAlign: "right" }}
+                      />
+                      <span style={{ width: 64, color: sub > 0 ? "#22c55e" : "var(--color-muted-foreground)", fontSize: 12, fontWeight: sub > 0 ? 700 : 400, textAlign: "right" }}>{sub > 0 ? fmt(sub, "") : "—"}</span>
+                    </div>
+                  );
+                })}
+                {itemsTotal > 0 && (
+                  <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 6, borderTop: "1px solid var(--color-border)", marginTop: 4 }}>
+                    <span style={{ color: "var(--color-primary)", fontSize: 13, fontWeight: 700 }}>{fmt(itemsTotal, currSym)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10 }}>
+              {!hasDetail && (
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, color: "var(--color-muted-foreground)", fontWeight: 600, marginBottom: 4, textTransform: "uppercase" }}>Kwota ({currSym})</div>
+                  <input type="number" value={s.amount} onChange={e => updateStage(s.id, { amount: e.target.value })} placeholder="0" style={smallInputStyle} />
+                </div>
+              )}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 10, color: "var(--color-muted-foreground)", fontWeight: 600, marginBottom: 4, textTransform: "uppercase" }}>Termin</div>
+                <input value={s.deadline} onChange={e => updateStage(s.id, { deadline: e.target.value })} placeholder="RRRR-MM-DD" style={smallInputStyle} />
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       <div style={{ fontSize: 11, color: "var(--color-muted-foreground)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10, marginTop: 8 }}>Dodaj etap</div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
