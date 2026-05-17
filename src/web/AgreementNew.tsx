@@ -96,7 +96,6 @@ interface WizardData {
   contractor: Party;
   pricingMethod: PricingMethod;
   basePrice: number;
-  pricePerUnit: string;
   currency: CurrencyCode;
   deadlineType: DeadlineType;
   deadlineSingle: string;
@@ -162,7 +161,7 @@ const INITIAL: WizardData = {
   category: "", subcategory: "",
   client: { name: "", phone: "", email: "" },
   contractor: { name: "", phone: "", email: "" },
-  pricingMethod: "", basePrice: 0, pricePerUnit: "", currency: "PLN",
+  pricingMethod: "", basePrice: 0, currency: "PLN",
   deadlineType: "single", deadlineSingle: "", deadlineFrom: "", deadlineTo: "", deadlineTbd: false,
   scopeDescription: "", scopeLocation: "", scopeMaterials: false, scopeWarranty: false, scopeAcceptance: false,
   scopeInstallations: [], scopeDemolition: false, scopeCleaning: false, scopeBeforePhotos: false,
@@ -338,7 +337,7 @@ function getSteps(category: string) {
   base.push({ id: "dodatki", label: "Dodatki" });
   base.push({ id: "wycena_koncowa", label: "Podsumowanie" });
   base.push({ id: "platnosc", label: "Płatność" });
-  if (category !== "sprzedaz") base.push({ id: "warunki", label: "Warunki" });
+  base.push({ id: "warunki", label: "Warunki" });
   base.push(
     { id: "protokol", label: "Protokół" },
     { id: "przeglad", label: "Przegląd" },
@@ -355,9 +354,9 @@ function calcTotal(data: WizardData): number {
   else if (data.pricingMethod === "per_day") base = data.basePrice * (data.rentalDays || 0);
   else if (data.pricingMethod === "per_week") base = data.basePrice * (data.rentalWeeks || 0);
   else if (data.pricingMethod === "per_month") base = data.basePrice * (data.rentalMonths || 0);
-  else base = data.basePrice;
+  else base = data.basePrice; // fixed, m2, materials_labor, wlasna
   const additional = data.additionalItems.reduce((s, i) => s + i.qty * i.price, 0);
-  const deposit = (data.pricingMethod === "per_day" || data.pricingMethod === "per_week" || data.pricingMethod === "per_month") ? (data.rentalDeposit || 0) : 0;
+  const deposit = (data.category === "wynajem") ? (data.rentalDeposit || 0) : 0;
   return base + additional + deposit;
 }
 
@@ -442,16 +441,37 @@ export default function AgreementNew() {
   const totalPrice = calcTotal(data);
 
   const warnings: string[] = [];
-if (data.category === "remont" && !data.scopeBeforePhotos) warnings.push("Brakuje zdjęć przed pracą");
+  if (data.category === "remont" && !data.scopeBeforePhotos) warnings.push("Brakuje zdjęć przed pracą");
   if (data.category !== "wlasna" && !data.scopeMaterials && data.category !== "sprzedaz" && data.category !== "wynajem")
     warnings.push("Nie ustalono kto kupuje materiały");
   if (data.paymentMethod === "deposit" && data.depositCovers.length === 0)
     warnings.push("Depozyt nie jest przypisany do konkretnych etapów");
+  if (data.pricingMethod && totalPrice === 0)
+    warnings.push("Kwota umowy wynosi 0 — uzupełnij wycenę");
+  if ((data.category === "wynajem") && !data.rentalDeposit)
+    warnings.push("Brak kaucji — ryzyko przy zniszczeniu mienia");
+  if (data.latePenalty && !data.latePenaltyAmount)
+    warnings.push("Włączona kara za opóźnienie, ale kwota wynosi 0");
+  if (data.warranty && !data.warrantyDays)
+    warnings.push("Włączona gwarancja, ale liczba dni wynosi 0");
 
   const canGoNext = () => {
     if (currentStep === "rola") return !!data.myRole;
     if (currentStep === "kategoria") return !!data.category && data.category !== "pozyczka";
-    if (currentStep === "strony") return true;
+    if (currentStep === "podkategoria") return !!data.subcategory;
+    if (currentStep === "strony") return !!data.inviteContact;
+    if (currentStep === "wycena") return !!data.pricingMethod && (
+      data.pricingMethod === "stages" ? data.paymentStages.length > 0 :
+      data.pricingMethod === "unit" ? data.unitItems.length > 0 :
+      data.basePrice > 0
+    );
+    if (currentStep === "termin") return (
+      data.deadlineType === "tbd" ||
+      (data.deadlineType === "single" && !!data.deadlineSingle) ||
+      ((data.deadlineType === "range" || data.deadlineType === "cyclic") && !!data.deadlineFrom && !!data.deadlineTo) ||
+      data.deadlineType === "stages"
+    );
+    if (currentStep === "protokol") return !!data.protocolStatus;
     return true;
   };
 
@@ -1565,12 +1585,27 @@ function StepSzczegolyWynajem({ data, update }: { data: WizardData; update: (p: 
   return (
     <div>
       <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Szczegóły wynajmu</h2>
+
+      <div style={sectionCard}>
+        <SectionLabel>Data wydania przedmiotu</SectionLabel>
+        <input type="date" value={data.rentalFrom} onChange={e => update({ rentalFrom: e.target.value })} style={inputStyle} />
+        <SectionLabel style={{ marginTop: 10 }}>Data zwrotu</SectionLabel>
+        <input type="date" value={data.rentalTo} onChange={e => update({ rentalTo: e.target.value })} style={inputStyle} />
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Stan przedmiotu przy wydaniu</SectionLabel>
+        <textarea value={data.rentalConditionBefore} onChange={e => update({ rentalConditionBefore: e.target.value })} placeholder="Opisz stan w chwili przekazania (zarysowania, uszkodzenia)..." style={textareaStyle} />
+      </div>
+
       <div style={sectionCard}>
         <SectionLabel>Warunki zwrotu</SectionLabel>
-        <textarea value={data.rentalReturnNotes} onChange={e => update({ rentalReturnNotes: e.target.value })} placeholder="Opisz warunki zwrotu przedmiotu..." style={textareaStyle} />
+        <textarea value={data.rentalReturnNotes} onChange={e => update({ rentalReturnNotes: e.target.value })} placeholder="Opisz oczekiwany stan przy zwrocie..." style={textareaStyle} />
       </div>
+
       <div style={sectionCard}>
-        <Toggle on={data.rentalDamageLiability} onChange={v => update({ rentalDamageLiability: v })} label="Odpowiedzialność za szkody" />
+        <Toggle on={data.rentalDamageLiability} onChange={v => update({ rentalDamageLiability: v })} label="Najemca odpowiada za szkody ponad normalne zużycie" />
+        <Toggle on={data.rentalProtocol} onChange={v => update({ rentalProtocol: v })} label="Wymagany protokół zdawczo-odbiorczy" />
       </div>
     </div>
   );
@@ -1759,46 +1794,74 @@ function StepPlatnosc({ data, update, totalPrice }: { data: WizardData; update: 
 
 // ——— STEP 11: Warunki wykonania
 function StepWarunki({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
+  const isSale = data.category === "sprzedaz";
+  const isRental = data.category === "wynajem";
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Warunki wykonania</h2>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Warunki</h2>
 
-      <div style={sectionCard}>
-        <SectionLabel>Kto kupuje materiały?</SectionLabel>
-        <div style={{ display: "flex", gap: 8 }}>
-          {[{ v: "client", l: "Zamawiający" }, { v: "contractor", l: "Wykonawca" }, { v: "split", l: "Podział" }].map(o => {
-            const active = data.materialsBy === o.v;
-            return <div key={o.v} onClick={() => update({ materialsBy: o.v as "client" | "contractor" | "split" })} style={{ flex: 1, textAlign: "center", padding: "10px 4px", borderRadius: 10, border: active ? "1.5px solid var(--color-primary)" : "1px solid var(--color-border)", background: active ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", cursor: "pointer", fontSize: 12, color: active ? "var(--color-primary)" : "var(--color-muted-foreground)", fontWeight: active ? 700 : 400 }}>{o.l}</div>;
-          })}
+      {!isSale && !isRental && (
+        <div style={sectionCard}>
+          <SectionLabel>Kto kupuje materiały?</SectionLabel>
+          <div style={{ display: "flex", gap: 8 }}>
+            {[{ v: "client", l: "Zamawiający" }, { v: "contractor", l: "Wykonawca" }, { v: "split", l: "Podział" }].map(o => {
+              const active = data.materialsBy === o.v;
+              return <div key={o.v} onClick={() => update({ materialsBy: o.v as "client" | "contractor" | "split" })} style={{ flex: 1, textAlign: "center", padding: "10px 4px", borderRadius: 10, border: active ? "1.5px solid var(--color-primary)" : "1px solid var(--color-border)", background: active ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", cursor: "pointer", fontSize: 12, color: active ? "var(--color-primary)" : "var(--color-muted-foreground)", fontWeight: active ? 700 : 400 }}>{o.l}</div>;
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div style={sectionCard}>
-        <SectionLabel>Kto odpowiada za transport?</SectionLabel>
-        <div style={{ display: "flex", gap: 8 }}>
-          {[{ v: "client", l: "Zamawiający" }, { v: "contractor", l: "Wykonawca" }].map(o => {
-            const active = data.transportBy === o.v;
-            return <div key={o.v} onClick={() => update({ transportBy: o.v as "client" | "contractor" })} style={{ flex: 1, textAlign: "center", padding: "10px 4px", borderRadius: 10, border: active ? "1.5px solid var(--color-primary)" : "1px solid var(--color-border)", background: active ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", cursor: "pointer", fontSize: 12, color: active ? "var(--color-primary)" : "var(--color-muted-foreground)", fontWeight: active ? 700 : 400 }}>{o.l}</div>;
-          })}
+      {isSale && (
+        <div style={sectionCard}>
+          <SectionLabel>Kto organizuje transport?</SectionLabel>
+          <div style={{ display: "flex", gap: 8 }}>
+            {[{ v: "client", l: "Kupujący" }, { v: "contractor", l: "Sprzedający" }].map(o => {
+              const active = data.transportBy === o.v;
+              return <div key={o.v} onClick={() => update({ transportBy: o.v as "client" | "contractor" })} style={{ flex: 1, textAlign: "center", padding: "10px 4px", borderRadius: 10, border: active ? "1.5px solid var(--color-primary)" : "1px solid var(--color-border)", background: active ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", cursor: "pointer", fontSize: 12, color: active ? "var(--color-primary)" : "var(--color-muted-foreground)", fontWeight: active ? 700 : 400 }}>{o.l}</div>;
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
+      {!isSale && !isRental && (
+        <div style={sectionCard}>
+          <SectionLabel>Kto odpowiada za transport?</SectionLabel>
+          <div style={{ display: "flex", gap: 8 }}>
+            {[{ v: "client", l: "Zamawiający" }, { v: "contractor", l: "Wykonawca" }].map(o => {
+              const active = data.transportBy === o.v;
+              return <div key={o.v} onClick={() => update({ transportBy: o.v as "client" | "contractor" })} style={{ flex: 1, textAlign: "center", padding: "10px 4px", borderRadius: 10, border: active ? "1.5px solid var(--color-primary)" : "1px solid var(--color-border)", background: active ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", cursor: "pointer", fontSize: 12, color: active ? "var(--color-primary)" : "var(--color-muted-foreground)", fontWeight: active ? 700 : 400 }}>{o.l}</div>;
+            })}
+          </div>
+        </div>
+      )}
 
       <div style={sectionCard}>
-        <Toggle on={data.weekendWork} onChange={v => update({ weekendWork: v })} label="Praca w weekend" />
-        <Toggle on={data.requireApproval} onChange={v => update({ requireApproval: v })} label="Dodatkowe prace wymagają akceptacji" />
+        {!isSale && !isRental && <Toggle on={data.weekendWork} onChange={v => update({ weekendWork: v })} label="Praca w weekend" />}
+        {!isSale && <Toggle on={data.requireApproval} onChange={v => update({ requireApproval: v })} label="Dodatkowe prace wymagają akceptacji" />}
         <Toggle on={data.priceChangeApproval} onChange={v => update({ priceChangeApproval: v })} label="Zmiany ceny wymagają akceptacji obu stron" />
-        <Toggle on={data.warranty} onChange={v => update({ warranty: v })} label="Gwarancja na wykonanie" />
+        <Toggle on={data.warranty} onChange={v => update({ warranty: v })} label={isSale ? "Gwarancja na przedmiot" : "Gwarancja na wykonanie"} />
         {data.warranty && (
           <div style={{ paddingTop: 8 }}>
-            <SectionLabel>Gwarancja — ile dni?</SectionLabel>
-            <input type="number" value={data.warrantyDays} onChange={e => update({ warrantyDays: parseInt(e.target.value) || 0 })} style={inputStyle} />
+            <SectionLabel>Okres gwarancji (dni)</SectionLabel>
+            <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+              {[{ l: "30 dni", d: 30 }, { l: "90 dni", d: 90 }, { l: "6 mies.", d: 180 }, { l: "1 rok", d: 365 }, { l: "2 lata", d: 730 }].map(s => (
+                <div key={s.d} onClick={() => update({ warrantyDays: s.d })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: data.warrantyDays === s.d ? 700 : 400, border: `1.5px solid ${data.warrantyDays === s.d ? "var(--color-primary)" : "var(--color-border)"}`, background: data.warrantyDays === s.d ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.warrantyDays === s.d ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>{s.l}</div>
+              ))}
+            </div>
+            <input type="number" value={data.warrantyDays} onChange={e => update({ warrantyDays: parseInt(e.target.value) || 0 })} placeholder="lub wpisz liczbę dni" style={{ ...inputStyle, fontSize: 15 }} />
           </div>
         )}
-        <Toggle on={data.latePenalty} onChange={v => update({ latePenalty: v })} label="Kara za opóźnienie" />
+        <Toggle on={data.latePenalty} onChange={v => update({ latePenalty: v })} label={isSale ? "Kara za nieterminową dostawę" : "Kara za opóźnienie"} />
         {data.latePenalty && (
           <div style={{ paddingTop: 8 }}>
-            <SectionLabel>Kara za opóźnienie (zł/dzień)</SectionLabel>
-            <input type="number" value={data.latePenaltyAmount} onChange={e => update({ latePenaltyAmount: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+            <SectionLabel>Kara ({data.currency}/dzień)</SectionLabel>
+            <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+              {[50, 100, 200, 500].map(amt => (
+                <div key={amt} onClick={() => update({ latePenaltyAmount: amt })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: data.latePenaltyAmount === amt ? 700 : 400, border: `1.5px solid ${data.latePenaltyAmount === amt ? "var(--color-primary)" : "var(--color-border)"}`, background: data.latePenaltyAmount === amt ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.latePenaltyAmount === amt ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>{amt} {data.currency}</div>
+              ))}
+            </div>
+            <input type="number" value={data.latePenaltyAmount} onChange={e => update({ latePenaltyAmount: parseFloat(e.target.value) || 0 })} placeholder="lub wpisz kwotę" style={{ ...inputStyle, fontSize: 15 }} />
           </div>
         )}
       </div>
@@ -1957,23 +2020,68 @@ function StepPrzeglad({ data, steps, goToStep, warnings, totalPrice }: { data: W
         <Row label="Wykonawca" value={data.contractor.name} />
       </Section>
       <Section id="wycena" title="Wycena" stepId="wycena">
-        <Row label="Model wyceny" value={data.pricingMethod} />
-        <Row label="Kwota bazowa" value={`${data.basePrice.toLocaleString("pl-PL")} ${data.currency}`} />
+        <Row label="Model rozliczenia" value={{
+          fixed: "Cena za całość", hourly: "Za godzinę", unit: "Za sztukę",
+          stages: "Etapami", per_day: "Za dzień", per_week: "Za tydzień", per_month: "Za miesiąc",
+          m2: "Za m²", materials_labor: "Materiały + robocizna",
+        }[data.pricingMethod] ?? data.pricingMethod} />
+        {data.pricingMethod === "stages" && data.paymentStages.length > 0 && data.paymentStages.map((s, i) => (
+          <Row key={s.id} label={`Etap ${i + 1}: ${s.name}`} value={`${s.amount.toLocaleString("pl-PL")} ${data.currency}`} />
+        ))}
+        {data.pricingMethod === "unit" && data.unitItems.length > 0 && data.unitItems.map(i => (
+          <Row key={i.id} label={`${i.name || "Pozycja"} × ${i.quantity}`} value={`${(i.unitPrice * i.quantity).toLocaleString("pl-PL")} ${data.currency}`} />
+        ))}
+        {data.pricingMethod === "hourly" && data.estimatedHours > 0 && (
+          <Row label={`${data.estimatedHours} godz. × ${data.basePrice.toLocaleString("pl-PL")} ${data.currency}`} value={`${(data.basePrice * data.estimatedHours).toLocaleString("pl-PL")} ${data.currency}`} />
+        )}
+        {data.pricingMethod === "per_day" && data.rentalDays > 0 && (
+          <Row label={`${data.rentalDays} dni × ${data.basePrice.toLocaleString("pl-PL")} ${data.currency}`} value={`${(data.basePrice * data.rentalDays).toLocaleString("pl-PL")} ${data.currency}`} />
+        )}
+        {data.pricingMethod === "per_week" && data.rentalWeeks > 0 && (
+          <Row label={`${data.rentalWeeks} tydz. × ${data.basePrice.toLocaleString("pl-PL")} ${data.currency}`} value={`${(data.basePrice * data.rentalWeeks).toLocaleString("pl-PL")} ${data.currency}`} />
+        )}
+        {data.pricingMethod === "per_month" && data.rentalMonths > 0 && (
+          <Row label={`${data.rentalMonths} mies. × ${data.basePrice.toLocaleString("pl-PL")} ${data.currency}`} value={`${(data.basePrice * data.rentalMonths).toLocaleString("pl-PL")} ${data.currency}`} />
+        )}
+        {["fixed", "m2", "materials_labor"].includes(data.pricingMethod) && (
+          <Row label="Kwota" value={`${data.basePrice.toLocaleString("pl-PL")} ${data.currency}`} />
+        )}
+        {data.rentalDeposit > 0 && <Row label="Kaucja" value={`${data.rentalDeposit.toLocaleString("pl-PL")} ${data.currency}`} />}
         {data.additionalItems.length > 0 && <Row label="Pozycje dodatkowe" value={`${data.additionalItems.length} pozycji`} />}
       </Section>
+      {data.category === "sprzedaz" && data.saleItems.length > 0 && (
+        <Section id="szczegoly" title="Przedmioty sprzedaży" stepId="szczegoly">
+          {data.saleItems.map((i, idx) => (
+            <Row key={i.id} label={`${idx + 1}. ${i.name || "Przedmiot"}`} value={i.condition} />
+          ))}
+        </Section>
+      )}
+      {data.category === "sprzedaz" && data.subcategory === "Auto/pojazd" && (data.vehicle?.brand || data.vehicle?.vin) && (
+        <Section id="szczegoly" title="Pojazd" stepId="szczegoly">
+          <Row label="Marka / model" value={`${data.vehicle?.brand ?? ""} ${data.vehicle?.model ?? ""}`.trim()} />
+          <Row label="Rok" value={data.vehicle?.year ?? ""} />
+          <Row label="VIN" value={data.vehicle?.vin ?? ""} />
+          <Row label="Przebieg" value={data.vehicle?.mileage ? `${data.vehicle.mileage} km` : ""} />
+          <Row label="Nr rej." value={data.vehicle?.licensePlate ?? ""} />
+        </Section>
+      )}
       <Section id="termin" title="Termin" stepId="termin">
-        <Row label="Typ terminu" value={data.deadlineType} />
-        <Row label="Data od" value={data.deadlineFrom || data.deadlineSingle} />
-        <Row label="Data do" value={data.deadlineTo} />
+        <Row label="Typ terminu" value={{ single: "Jedna data", range: "Od–do", stages: "Etapy", cyclic: "Cyklicznie", tbd: "Do uzgodnienia" }[data.deadlineType] ?? data.deadlineType} />
+        {data.deadlineSingle && <Row label="Data" value={data.deadlineSingle} />}
+        {data.deadlineFrom && <Row label="Od" value={data.deadlineFrom} />}
+        {data.deadlineTo && <Row label="Do" value={data.deadlineTo} />}
+        {data.rentalFrom && <Row label="Wydanie" value={data.rentalFrom} />}
+        {data.rentalTo && <Row label="Zwrot" value={data.rentalTo} />}
       </Section>
       <Section id="warunki" title="Warunki" stepId="warunki">
-        <Row label="Materiały" value={data.materialsBy === "client" ? "Zamawiający" : data.materialsBy === "contractor" ? "Wykonawca" : "Podział"} />
-        <Row label="Gwarancja" value={data.warranty ? `${data.warrantyDays} dni` : "Nie"} />
-        <Row label="Kara za opóźnienie" value={data.latePenalty ? `${data.latePenaltyAmount} zł/dzień` : "Nie"} />
+        {data.category !== "sprzedaz" && data.category !== "wynajem" && <Row label="Materiały" value={data.materialsBy === "client" ? "Zamawiający" : data.materialsBy === "contractor" ? "Wykonawca" : "Podział"} />}
+        <Row label="Transport" value={data.transportBy === "client" ? (data.category === "sprzedaz" ? "Kupujący" : "Zamawiający") : (data.category === "sprzedaz" ? "Sprzedający" : "Wykonawca")} />
+        <Row label="Gwarancja" value={data.warranty ? `${data.warrantyDays} dni` : "Brak"} />
+        <Row label="Kara za opóźnienie" value={data.latePenalty ? `${data.latePenaltyAmount} ${data.currency}/dzień` : "Brak"} />
       </Section>
       <Section id="platnosc" title="Płatność" stepId="platnosc">
-        <Row label="Model płatności" value={data.paymentMethod} />
-        <Row label="Depozyt obejmuje" value={data.depositCovers.join(", ")} />
+        <Row label="Model płatności" value={({ upfront: "Z góry", after: "Po wykonaniu", stages: "Etapami", deposit: "Depozyt", partial_deposit: "Częściowy depozyt" } as Record<string,string>)[data.paymentMethod] ?? data.paymentMethod} />
+        {data.depositCovers.length > 0 && <Row label="Depozyt obejmuje" value={data.depositCovers.join(", ")} />}
       </Section>
 
       <div style={{ background: "color-mix(in srgb, var(--color-primary) 10%, transparent)", borderRadius: 12, border: "1.5px solid var(--color-primary)", padding: 20, textAlign: "center", margin: "16px 0 8px" }}>
