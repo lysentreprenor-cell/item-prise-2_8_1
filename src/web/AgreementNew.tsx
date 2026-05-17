@@ -651,7 +651,10 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
         })}
       </div>
       <div style={sectionCard}>
-        <SectionLabel>Kwota bazowa</SectionLabel>
+        <SectionLabel>
+          {data.pricingMethod === "per_month" ? "Czynsz miesięczny" : "Kwota bazowa"}
+          {" "}({data.currency})
+        </SectionLabel>
         <input
           type="number"
           value={data.basePrice || ""}
@@ -671,6 +674,39 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
           })}
         </div>
       </div>
+
+      {data.pricingMethod === "per_month" && (
+        <div style={{ ...sectionCard, border: "1.5px solid var(--color-primary)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 18 }}>🔒</span>
+            <div>
+              <div style={{ color: "var(--color-primary)", fontSize: 14, fontWeight: 700 }}>Kaucja w depozycie</div>
+              <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, lineHeight: 1.4 }}>Zablokowana przez cały najem — zwracana po zakończeniu umowy</div>
+            </div>
+          </div>
+          <SectionLabel>Kwota kaucji ({data.currency})</SectionLabel>
+          <input
+            type="number"
+            value={data.rentalDeposit || ""}
+            onChange={e => update({ rentalDeposit: parseFloat(e.target.value) || 0 })}
+            placeholder="np. 2× czynsz"
+            style={{ ...inputStyle, fontSize: 18, fontWeight: 700 }}
+          />
+          {data.basePrice > 0 && (
+            <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+              {[1, 2, 3].map(mult => (
+                <div
+                  key={mult}
+                  onClick={() => update({ rentalDeposit: data.basePrice * mult })}
+                  style={{ padding: "6px 14px", borderRadius: 20, border: "1px solid var(--color-border)", background: data.rentalDeposit === data.basePrice * mult ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", borderColor: data.rentalDeposit === data.basePrice * mult ? "var(--color-primary)" : "var(--color-border)", cursor: "pointer", fontSize: 13, color: data.rentalDeposit === data.basePrice * mult ? "var(--color-primary)" : "var(--color-muted-foreground)", fontWeight: data.rentalDeposit === data.basePrice * mult ? 700 : 400 }}
+                >
+                  {mult}× czynsz = {(data.basePrice * mult).toLocaleString("pl-PL")} {data.currency}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
