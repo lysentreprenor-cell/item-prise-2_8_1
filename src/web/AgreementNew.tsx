@@ -345,8 +345,7 @@ export default function AgreementNew() {
   const totalPrice = data.basePrice + additionalTotal + (data.rentalDeposit || 0);
 
   const warnings: string[] = [];
-  if (!data.client.name && !data.contractor.name) warnings.push("Brak danych drugiej strony");
-  if (data.category === "remont" && !data.scopeBeforePhotos) warnings.push("Brakuje zdjęć przed pracą");
+if (data.category === "remont" && !data.scopeBeforePhotos) warnings.push("Brakuje zdjęć przed pracą");
   if (data.category !== "wlasna" && !data.scopeMaterials && data.category !== "sprzedaz" && data.category !== "wynajem")
     warnings.push("Nie ustalono kto kupuje materiały");
   if (data.paymentMethod === "deposit" && data.depositCovers.length === 0)
@@ -355,10 +354,7 @@ export default function AgreementNew() {
   const canGoNext = () => {
     if (currentStep === "rola") return !!data.myRole;
     if (currentStep === "kategoria") return !!data.category && data.category !== "pozyczka";
-    if (currentStep === "strony") {
-      const mine = data.myRole === "contractor" ? data.contractor : data.client;
-      return !!mine.name;
-    }
+    if (currentStep === "strony") return true;
     return true;
   };
 
@@ -598,39 +594,34 @@ function StepPodkategoria({ data, update, goNext }: { data: WizardData; update: 
 
 // ——— STEP 3: Strony
 function StepStrony({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
-  const PartyForm = ({ title, party, onChange, highlight }: { title: string; party: Party; onChange: (p: Party) => void; highlight?: boolean }) => (
-    <div style={{ ...sectionCard, border: highlight ? "1.5px solid var(--color-primary)" : "1px solid var(--color-border)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <SectionLabel>{title}</SectionLabel>
-        {highlight && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--color-primary)", background: "color-mix(in srgb, var(--color-primary) 12%, transparent)", borderRadius: 20, padding: "2px 8px", whiteSpace: "nowrap", marginBottom: 8 }}>Twoje dane</span>}
-      </div>
-      <div style={{ marginBottom: 8 }}>
-        <input value={party.name} onChange={e => onChange({ ...party, name: e.target.value })} placeholder="Imię i nazwisko" style={inputStyle} />
-      </div>
-      <div style={{ marginBottom: 8 }}>
-        <input value={party.phone} onChange={e => onChange({ ...party, phone: e.target.value })} placeholder="Telefon" type="tel" style={inputStyle} />
-      </div>
-      <input value={party.email} onChange={e => onChange({ ...party, email: e.target.value })} placeholder="Email (opcjonalnie)" type="email" style={inputStyle} />
-    </div>
-  );
   const clientLabel = data.category === "wynajem" ? "Najemca" : data.category === "sprzedaz" ? "Kupujący" : "Zleceniodawca";
   const contractorLabel = data.category === "wynajem" ? "Wynajmujący" : data.category === "sprzedaz" ? "Sprzedający" : "Wykonawca";
-  const iAmClient = data.myRole === "client";
+  const myLabel = data.myRole === "client" ? clientLabel : contractorLabel;
+  const otherLabel = data.myRole === "client" ? contractorLabel : clientLabel;
+
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-        <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, margin: 0 }}>Strony umowy</h2>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "#16a34a", background: "color-mix(in srgb, #16a34a 12%, transparent)", border: "1px solid color-mix(in srgb, #16a34a 30%, transparent)", borderRadius: 20, padding: "2px 8px", whiteSpace: "nowrap" }}>🔒 Dane chronione</span>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Zaproś drugą stronę</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 20, lineHeight: 1.6 }}>
+        Tworzysz jako <b>{myLabel}</b>. Podaj kontakt do {otherLabel.toLowerCase()}y — wyślesz zaproszenie do podpisania umowy.
+      </p>
+
+      <div style={sectionCard}>
+        <SectionLabel>Kontakt do {otherLabel}</SectionLabel>
+        <input
+          value={data.inviteContact}
+          onChange={e => update({ inviteContact: e.target.value })}
+          placeholder="@nick, adres email lub numer telefonu"
+          style={inputStyle}
+          autoComplete="off"
+        />
+        <div style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginTop: 8, lineHeight: 1.5 }}>
+          Druga strona dostanie link do przeglądu i podpisania umowy.
+        </div>
       </div>
-      <PartyForm title={clientLabel} party={data.client} onChange={v => update({ client: v })} highlight={iAmClient} />
-      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "4px 0 4px 2px" }}>
-        <div style={{ flex: 1, height: 1, background: "var(--color-border)" }} />
-        <span style={{ color: "var(--color-muted-foreground)", fontSize: 11 }}>druga strona</span>
-        <div style={{ flex: 1, height: 1, background: "var(--color-border)" }} />
-      </div>
-      <PartyForm title={contractorLabel} party={data.contractor} onChange={v => update({ contractor: v })} highlight={!iAmClient} />
-      <div style={{ marginTop: 8, padding: "10px 12px", borderRadius: 10, background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
-        <span style={{ color: "var(--color-muted-foreground)", fontSize: 12 }}>💡 Nie znasz danych drugiej strony? Wprowadź swoje i zaproś ją na końcu kreatora.</span>
+
+      <div style={{ padding: "12px 14px", borderRadius: 10, background: "color-mix(in srgb, #16a34a 7%, transparent)", border: "1px solid color-mix(in srgb, #16a34a 25%, transparent)", marginTop: 4 }}>
+        <span style={{ color: "#16a34a", fontSize: 13, fontWeight: 600 }}>🔒 Dane obu stron pobierane są z ich kont przy akceptacji umowy.</span>
       </div>
     </div>
   );
