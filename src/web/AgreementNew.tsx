@@ -249,7 +249,36 @@ const DEPOSIT_COVERS_OPTIONS = [
   "Ostatnia rata", "Poprawki/usterki", "Kaucja za szkody",
 ];
 
-function getSteps(category: Category | ""): { id: string; label: string }[] {
+const CATEGORY_LABELS: Record<string, string> = {
+  usluga: "Usługa", remont: "Remont", sprzedaz: "Sprzedaż", wynajem: "Wynajem", wlasna: "Własna",
+};
+
+const STEP_HINTS: Record<string, { icon: string; text: string }> = {
+  podkategoria: { icon: "🎯", text: "Precyzyjny typ umowy = mniej sporów i lepsza ochrona." },
+  strony: { icon: "🔒", text: "Dane stron są używane wyłącznie w tej umowie. Obie strony muszą je zaakceptować." },
+  wycena: { icon: "💡", text: "Jasna cena od początku eliminuje 80% konfliktów przy rozliczeniu." },
+  termin: { icon: "📅", text: "Konkretny termin + kara za opóźnienie to najlepsza motywacja do dotrzymania słowa." },
+  zakres: { icon: "📋", text: "Im dokładniejszy zakres, tym mniej miejsca na nieporozumienia." },
+  pomieszczenia: { icon: "📐", text: "Pomiary i zdjęcia przed pracą to Twój dowód w razie sporu." },
+  szczegoly: { icon: "🔍", text: "Numer seryjny i stan urządzenia to jedyne zabezpieczenie przy sporze o stan przed sprzedażą." },
+  szczegoly_wynajmu: { icon: "🏠", text: "Protokół wydania chroni zarówno wynajmującego, jak i najemcę." },
+  dodatki: { icon: "➕", text: "Zapomniane koszty to najczęstszy powód kłótni. Dodaj wszystko teraz." },
+  wycena_koncowa: { icon: "💰", text: "Sprawdź dokładnie. Po podpisaniu zmiany wymagają aneksu." },
+  platnosc: { icon: "🛡️", text: "Depozyt blokuje środki do odbioru — chronisz siebie bez ryzykowania relacji." },
+  warunki: { icon: "⚖️", text: "Jasne warunki = brak zaskoczeń. Każda strona wie czego się spodziewać." },
+  protokol: { icon: "✅", text: "Protokół odbioru to ostatni krok przed wypłatą — nie pomijaj go." },
+  przeglad: { icon: "👁️", text: "Ostatnia szansa na sprawdzenie. Każdy błąd teraz = problem po podpisaniu." },
+};
+
+function getContextualNudge(data: WizardData): { icon: string; text: string; color: string } | null {
+  if (data.category === "remont" && !data.paymentMethod) return { icon: "🛡️", text: "Przy remontach 9 na 10 sporów dotyczy wypłaty — depozyt eliminuje ten problem.", color: "#7c3aed" };
+  if (data.category === "sprzedaz" && data.subcategory === "Elektronika") return { icon: "📱", text: "IMEI i numer seryjny to jedyny dowód tożsamości urządzenia. Bez nich nie masz ochrony.", color: "#0369a1" };
+  if (data.category === "wynajem" && !data.rentalDeposit) return { icon: "⚠️", text: "Brak kaucji = brak ochrony przy zniszczeniu. Nawet symboliczna kwota ma znaczenie prawne.", color: "#b45309" };
+  if (data.basePrice > 5000 && data.paymentMethod !== "deposit") return { icon: "💡", text: `Umowa na ${data.basePrice.toLocaleString("pl-PL")} ${data.currency} — rozważ depozyt. Przy tej kwocie to kluczowe zabezpieczenie.`, color: "#7c3aed" };
+  return null;
+}
+
+function getSteps(category: string) {
   const base = [
     { id: "kategoria", label: "Kategoria" },
     { id: "podkategoria", label: "Podkategoria" },
@@ -355,8 +384,8 @@ export default function AgreementNew() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--color-background)", display: "flex", flexDirection: "column", maxWidth: 560, margin: "0 auto", paddingBottom: 88 }}>
       {/* Progress bar */}
-      <div style={{ padding: "12px 16px 8px", position: "sticky", top: 0, background: "var(--color-background)", zIndex: 10, borderBottom: "1px solid var(--color-border)" }}>
-        <div style={{ display: "flex", gap: 4, overflowX: "auto" }}>
+      <div style={{ padding: "12px 16px 6px", position: "sticky", top: 0, background: "var(--color-background)", zIndex: 10, borderBottom: "1px solid var(--color-border)" }}>
+        <div style={{ display: "flex", gap: 4, overflowX: "auto", marginBottom: 6 }}>
           {steps.map((s, i) => {
             const active = i === stepIndex;
             const done = i < stepIndex;
@@ -367,6 +396,15 @@ export default function AgreementNew() {
               </div>
             );
           })}
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, display: "flex", gap: 6, alignItems: "center" }}>
+            {data.category && <span style={{ color: "var(--color-primary)", fontWeight: 700 }}>{CATEGORY_LABELS[data.category]}</span>}
+            {data.subcategory && <><span style={{ color: "var(--color-border)" }}>›</span><span>{data.subcategory}</span></>}
+          </div>
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 600 }}>
+            {Math.round((stepIndex / (totalSteps - 1)) * 100)}%
+          </div>
         </div>
       </div>
 
@@ -380,6 +418,27 @@ export default function AgreementNew() {
             exit={{ opacity: 0, x: -16 }}
             transition={{ duration: 0.18 }}
           >
+            {STEP_HINTS[currentStep] && (
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 12px", borderRadius: 10, background: "color-mix(in srgb, var(--color-primary) 8%, transparent)", border: "1px solid color-mix(in srgb, var(--color-primary) 25%, transparent)", marginBottom: 16 }}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>{STEP_HINTS[currentStep].icon}</span>
+                <span style={{ color: "var(--color-muted-foreground)", fontSize: 12, lineHeight: 1.5 }}>{STEP_HINTS[currentStep].text}</span>
+              </div>
+            )}
+            {(() => {
+              const nudge = getContextualNudge(data);
+              return nudge && (currentStep === "platnosc" || currentStep === "wycena" || currentStep === "szczegoly" || currentStep === "szczegoly_wynajmu") ? (
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 12px", borderRadius: 10, background: `color-mix(in srgb, ${nudge.color} 10%, transparent)`, border: `1px solid color-mix(in srgb, ${nudge.color} 30%, transparent)`, marginBottom: 16 }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>{nudge.icon}</span>
+                  <span style={{ color: "var(--color-foreground)", fontSize: 12, lineHeight: 1.5 }}>{nudge.text}</span>
+                </div>
+              ) : null;
+            })()}
+            {currentStep === "platnosc" && (
+              <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 12px", borderRadius: 8, background: "color-mix(in srgb, #16a34a 8%, transparent)", border: "1px solid color-mix(in srgb, #16a34a 25%, transparent)", marginBottom: 14 }}>
+                <span style={{ fontSize: 14 }}>👥</span>
+                <span style={{ color: "#16a34a", fontSize: 11, fontWeight: 600 }}>93% użytkowników wybiera depozyt przy umowach powyżej 1000 zł</span>
+              </div>
+            )}
             {renderStep()}
           </motion.div>
         </AnimatePresence>
@@ -499,7 +558,10 @@ function StepStrony({ data, update }: { data: WizardData; update: (p: Partial<Wi
   const contractorLabel = data.category === "wynajem" ? "Wynajmujący" : data.category === "sprzedaz" ? "Sprzedający" : "Wykonawca";
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 16 }}>Strony umowy</h2>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+        <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, margin: 0 }}>Strony umowy</h2>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "#16a34a", background: "color-mix(in srgb, #16a34a 12%, transparent)", border: "1px solid color-mix(in srgb, #16a34a 30%, transparent)", borderRadius: 20, padding: "2px 8px", whiteSpace: "nowrap" }}>🔒 Dane chronione</span>
+      </div>
       <PartyForm title={clientLabel} party={data.client} onChange={v => update({ client: v })} />
       <PartyForm title={contractorLabel} party={data.contractor} onChange={v => update({ contractor: v })} />
     </div>
