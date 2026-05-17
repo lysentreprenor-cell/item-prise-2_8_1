@@ -311,8 +311,8 @@ export default function AgreementNew() {
 
   const renderStep = () => {
     switch (currentStep) {
-      case "kategoria": return <StepKategoria data={data} update={update} />;
-      case "podkategoria": return <StepPodkategoria data={data} update={update} />;
+      case "kategoria": return <StepKategoria data={data} update={update} goNext={goNext} />;
+      case "podkategoria": return <StepPodkategoria data={data} update={update} goNext={goNext} />;
       case "strony": return <StepStrony data={data} update={update} />;
       case "wycena": return <StepWycena data={data} update={update} />;
       case "termin": return <StepTermin data={data} update={update} />;
@@ -386,19 +386,22 @@ export default function AgreementNew() {
       </div>
 
       {/* Navigation */}
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 560, background: "var(--color-background)", borderTop: "1px solid var(--color-border)", padding: "12px 16px", display: "flex", gap: 10, boxSizing: "border-box" }}>
-        {stepIndex > 0 && (
-          <button onClick={goBack} style={{ ...btnSecondary, flex: 1, padding: "13px 0" }}>
-            ← Wstecz
-          </button>
-        )}
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 560, background: "var(--color-background)", borderTop: "1px solid var(--color-border)", padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", boxSizing: "border-box" }}>
+        <button
+          onClick={goBack}
+          disabled={stepIndex === 0}
+          style={{ width: 44, height: 44, borderRadius: 22, border: "1px solid var(--color-border)", background: "transparent", color: "var(--color-muted-foreground)", fontSize: 20, cursor: stepIndex === 0 ? "not-allowed" : "pointer", opacity: stepIndex === 0 ? 0.3 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
+          ←
+        </button>
+        <div style={{ color: "var(--color-muted-foreground)", fontSize: 12 }}>{stepIndex + 1} / {totalSteps}</div>
         {currentStep !== "podpis" && (
           <button
             onClick={goNext}
             disabled={!canGoNext()}
-            style={{ ...btnPrimary, flex: 2, padding: "13px 0", opacity: canGoNext() ? 1 : 0.5, cursor: canGoNext() ? "pointer" : "not-allowed" }}
+            style={{ width: 44, height: 44, borderRadius: 22, border: "none", background: canGoNext() ? "var(--color-primary)" : "var(--color-border)", color: "#fff", fontSize: 20, cursor: canGoNext() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center" }}
           >
-            Dalej →
+            →
           </button>
         )}
       </div>
@@ -407,51 +410,36 @@ export default function AgreementNew() {
 }
 
 // ——— STEP 1: Kategoria
-function StepKategoria({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
-  const categories: { value: Category; label: string; icon: string; disabled?: boolean }[] = [
+function StepKategoria({ data, update, goNext }: { data: WizardData; update: (p: Partial<WizardData>) => void; goNext: () => void }) {
+  const categories: { value: Category; label: string; icon: string }[] = [
     { value: "usluga", label: "Usługa", icon: "🛠️" },
     { value: "remont", label: "Remont", icon: "🔨" },
     { value: "sprzedaz", label: "Sprzedaż", icon: "🛍️" },
     { value: "wynajem", label: "Wynajem", icon: "🏠" },
     { value: "wlasna", label: "Stwórz własną", icon: "📝" },
-    { value: "pozyczka", label: "Pożyczka", icon: "🔒", disabled: true },
   ];
   return (
     <div>
       <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Nowa umowa</h2>
-      <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 18, lineHeight: 1.5 }}>Wybierz kategorię umowy, aby dostosować kroki.</p>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 18, lineHeight: 1.5 }}>Wybierz kategorię umowy.</p>
       <div style={tileGrid}>
-        {categories.map(c => {
-          const active = data.category === c.value;
-          return (
-            <div
-              key={c.value}
-              onClick={() => !c.disabled && update({ category: c.value, subcategory: "" })}
-              style={{
-                ...cardStyle(active),
-                opacity: c.disabled ? 0.5 : 1,
-                cursor: c.disabled ? "not-allowed" : "pointer",
-                position: "relative",
-              }}
-            >
-              <div style={{ fontSize: 28, marginBottom: 6 }}>{c.icon}</div>
-              <div style={{ color: active ? "var(--color-primary)" : "var(--color-foreground)", fontSize: 14, fontWeight: 700 }}>{c.label}</div>
-              {c.disabled && (
-                <span style={{ position: "absolute", top: 8, right: 8, background: "#f59e0b", color: "#fff", fontSize: 9, fontWeight: 800, padding: "2px 6px", borderRadius: 6 }}>
-                  Wkrótce
-                </span>
-              )}
-              {active && <div style={{ position: "absolute", top: 8, right: 8, width: 18, height: 18, borderRadius: 9, background: "var(--color-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 10, fontWeight: 800 }}>✓</div>}
-            </div>
-          );
-        })}
+        {categories.map(c => (
+          <div
+            key={c.value}
+            onClick={() => { update({ category: c.value, subcategory: "" }); goNext(); }}
+            style={{ ...cardStyle(false), cursor: "pointer" }}
+          >
+            <div style={{ fontSize: 28, marginBottom: 6 }}>{c.icon}</div>
+            <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 700 }}>{c.label}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
 // ——— STEP 2: Podkategoria
-function StepPodkategoria({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
+function StepPodkategoria({ data, update, goNext }: { data: WizardData; update: (p: Partial<WizardData>) => void; goNext: () => void }) {
   if (data.category === "wlasna") {
     return (
       <div>
@@ -466,14 +454,11 @@ function StepPodkategoria({ data, update }: { data: WizardData; update: (p: Part
       <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Podkategoria</h2>
       <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 18, lineHeight: 1.5 }}>Wybierz rodzaj umowy.</p>
       <div style={tileGrid}>
-        {subs.map(s => {
-          const active = data.subcategory === s;
-          return (
-            <div key={s} onClick={() => update({ subcategory: s })} style={cardStyle(active)}>
-              <div style={{ color: active ? "var(--color-primary)" : "var(--color-foreground)", fontSize: 14, fontWeight: 600 }}>{s}</div>
-            </div>
-          );
-        })}
+        {subs.map(s => (
+          <div key={s} onClick={() => { update({ subcategory: s }); goNext(); }} style={{ ...cardStyle(false), cursor: "pointer" }}>
+            <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 600 }}>{s}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
