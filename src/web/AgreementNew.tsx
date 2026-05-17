@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore, type CurrencyCode } from "@/lib/store";
 
@@ -339,6 +339,74 @@ function getSteps(category: string) {
   return base;
 }
 
+function calcTotal(data: WizardData): number {
+  let base = 0;
+  if (data.pricingMethod === "hourly") base = data.basePrice * (data.estimatedHours || 0);
+  else if (data.pricingMethod === "unit") base = data.unitItems.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
+  else if (data.pricingMethod === "stages") base = data.paymentStages.reduce((s, e) => s + e.amount, 0);
+  else if (data.pricingMethod === "per_day") base = data.basePrice * (data.rentalDays || 0);
+  else if (data.pricingMethod === "per_week") base = data.basePrice * (data.rentalWeeks || 0);
+  else if (data.pricingMethod === "per_month") base = data.basePrice * (data.rentalMonths || 0);
+  else base = data.basePrice;
+  const additional = data.additionalItems.reduce((s, i) => s + i.qty * i.price, 0);
+  const deposit = (data.pricingMethod === "per_day" || data.pricingMethod === "per_week" || data.pricingMethod === "per_month") ? (data.rentalDeposit || 0) : 0;
+  return base + additional + deposit;
+}
+
+function calcTickerLabel(data: WizardData): string {
+  const c = data.currency;
+  if (data.pricingMethod === "hourly" && data.estimatedHours > 0)
+    return `${data.estimatedHours} godz. × ${data.basePrice.toLocaleString("pl-PL")} ${c}`;
+  if (data.pricingMethod === "unit" && data.unitItems.length > 0)
+    return `${data.unitItems.length} ${data.unitItems.length === 1 ? "pozycja" : "pozycje"}`;
+  if (data.pricingMethod === "stages" && data.paymentStages.length > 0)
+    return `${data.paymentStages.length} ${data.paymentStages.length === 1 ? "etap" : "etapów"}`;
+  if (data.pricingMethod === "per_day" && data.rentalDays > 0)
+    return `${data.rentalDays} dni × ${data.basePrice.toLocaleString("pl-PL")} ${c}`;
+  if (data.pricingMethod === "per_week" && data.rentalWeeks > 0)
+    return `${data.rentalWeeks} tydz. × ${data.basePrice.toLocaleString("pl-PL")} ${c}`;
+  if (data.pricingMethod === "per_month" && data.rentalMonths > 0)
+    return `${data.rentalMonths} mies. × ${data.basePrice.toLocaleString("pl-PL")} ${c}`;
+  if (data.basePrice > 0) return "Cena za całość";
+  return "";
+}
+
+function LiveTicker({ total, label, currency }: { total: number; label: string; currency: string }) {
+  const [flash, setFlash] = useState(false);
+  const prev = useRef(total);
+
+  useEffect(() => {
+    if (total !== prev.current) {
+      if (total > 0) setFlash(true);
+      const t = setTimeout(() => setFlash(false), 600);
+      prev.current = total;
+      return () => clearTimeout(t);
+    }
+  }, [total]);
+
+  if (total === 0) return null;
+
+  return (
+    <div style={{
+      display: "flex", justifyContent: "space-between", alignItems: "center",
+      padding: "7px 14px", borderRadius: 12, marginBottom: 8,
+      background: flash
+        ? "color-mix(in srgb, var(--color-primary) 20%, transparent)"
+        : "color-mix(in srgb, var(--color-primary) 8%, transparent)",
+      border: `1.5px solid color-mix(in srgb, var(--color-primary) ${flash ? 60 : 22}%, transparent)`,
+      transition: "background 0.4s, border-color 0.4s",
+      boxShadow: flash ? "0 0 12px color-mix(in srgb, var(--color-primary) 25%, transparent)" : "none",
+    }}>
+      <span style={{ color: "var(--color-muted-foreground)", fontSize: 12, fontWeight: 500 }}>
+        {label ? `= ${label}` : "Suma"}
+      </span>
+      <span style={{ color: "var(--color-primary)", fontSize: 20, fontWeight: 900, letterSpacing: "-0.02em" }}>
+        {total.toLocaleString("pl-PL")} {currency}
+      </span>
+    </div>
+  );
+}
+
 export default function AgreementNew() {
   const { defaultCurrency } = useAppStore();
   const [stepIndex, setStepIndex] = useState(0);
@@ -363,7 +431,7 @@ export default function AgreementNew() {
   const currentStep = steps[stepIndex]?.id ?? "";
 
   const additionalTotal = data.additionalItems.reduce((s, i) => s + i.qty * i.price, 0);
-  const totalPrice = data.basePrice + additionalTotal + (data.rentalDeposit || 0);
+  const totalPrice = calcTotal(data);
 
   const warnings: string[] = [];
 if (data.category === "remont" && !data.scopeBeforePhotos) warnings.push("Brakuje zdjęć przed pracą");
@@ -504,7 +572,9 @@ if (data.category === "remont" && !data.scopeBeforePhotos) warnings.push("Brakuj
       </div>
 
       {/* Navigation */}
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: "min(560px, 100vw)", background: "var(--color-background)", borderTop: "1px solid var(--color-border)", padding: "10px 16px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", boxSizing: "border-box" }}>
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: "min(560px, 100vw)", background: "var(--color-background)", borderTop: "1px solid var(--color-border)", padding: "8px 16px 14px", boxSizing: "border-box" }}>
+        <LiveTicker total={totalPrice} label={calcTickerLabel(data)} currency={data.currency} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button
           onClick={goBack}
           disabled={stepIndex === 0}
@@ -522,6 +592,7 @@ if (data.category === "remont" && !data.scopeBeforePhotos) warnings.push("Brakuj
             →
           </button>
         )}
+        </div>
       </div>
     </div>
   );
