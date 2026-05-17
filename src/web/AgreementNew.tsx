@@ -1505,15 +1505,6 @@ function StepSzczegolyWynajem({ data, update }: { data: WizardData; update: (p: 
     <div>
       <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Szczegóły wynajmu</h2>
       <div style={sectionCard}>
-        <SectionLabel>Okres najmu</SectionLabel>
-        <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
-          <div style={{ flex: 1 }}><SectionLabel>Od</SectionLabel><input type="date" value={data.rentalFrom} onChange={e => update({ rentalFrom: e.target.value })} style={inputStyle} /></div>
-          <div style={{ flex: 1 }}><SectionLabel>Do</SectionLabel><input type="date" value={data.rentalTo} onChange={e => update({ rentalTo: e.target.value })} style={inputStyle} /></div>
-        </div>
-        <SectionLabel>Kaucja ({data.currency})</SectionLabel>
-        <input type="number" value={data.rentalDeposit || ""} onChange={e => update({ rentalDeposit: parseFloat(e.target.value) || 0 })} placeholder="0" style={inputStyle} />
-      </div>
-      <div style={sectionCard}>
         <SectionLabel>Warunki zwrotu</SectionLabel>
         <textarea value={data.rentalReturnNotes} onChange={e => update({ rentalReturnNotes: e.target.value })} placeholder="Opisz warunki zwrotu przedmiotu..." style={textareaStyle} />
       </div>
