@@ -144,15 +144,15 @@ const INITIAL: WizardData = {
 
 // ——— Style helpers
 const inputStyle: React.CSSProperties = {
-  width: "100%", padding: "10px 14px", borderRadius: 10,
+  width: "100%", padding: "12px 16px", borderRadius: 10,
   border: "1px solid var(--color-border)", background: "var(--color-card)",
-  color: "var(--color-foreground)", fontSize: 14, boxSizing: "border-box",
+  color: "var(--color-foreground)", fontSize: 16, boxSizing: "border-box",
 };
 const textareaStyle: React.CSSProperties = {
-  ...inputStyle, resize: "vertical", minHeight: 80, fontFamily: "inherit",
+  ...inputStyle, resize: "vertical", minHeight: 90, fontFamily: "inherit",
 };
 const labelStyle: React.CSSProperties = {
-  fontSize: 11, fontWeight: 700, textTransform: "uppercase",
+  fontSize: 12, fontWeight: 700, textTransform: "uppercase",
   letterSpacing: 0.8, color: "var(--color-muted-foreground)", marginBottom: 8, display: "block",
 };
 const cardStyle = (active = false): React.CSSProperties => ({
@@ -169,14 +169,14 @@ const tileGrid: React.CSSProperties = {
   display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%",
 };
 const btnPrimary: React.CSSProperties = {
-  padding: "10px 20px", borderRadius: 10, border: "none",
+  padding: "13px 20px", borderRadius: 10, border: "none",
   background: "var(--color-primary)", color: "#fff",
-  fontSize: 14, fontWeight: 700, cursor: "pointer",
+  fontSize: 16, fontWeight: 700, cursor: "pointer",
 };
 const btnSecondary: React.CSSProperties = {
-  padding: "10px 20px", borderRadius: 10,
+  padding: "13px 20px", borderRadius: 10,
   border: "1px solid var(--color-border)", background: "transparent",
-  color: "var(--color-muted-foreground)", fontSize: 14, fontWeight: 600, cursor: "pointer",
+  color: "var(--color-muted-foreground)", fontSize: 16, fontWeight: 600, cursor: "pointer",
 };
 
 function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
@@ -184,7 +184,7 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
     <div
       style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--color-border)" }}
     >
-      <span style={{ color: "var(--color-foreground)", fontSize: 14 }}>{label}</span>
+      <span style={{ color: "var(--color-foreground)", fontSize: 16 }}>{label}</span>
       <div
         onClick={() => onChange(!on)}
         style={{
@@ -390,7 +390,7 @@ export default function AgreementNew() {
         <div style={{ textAlign: "center", maxWidth: 400, width: "100%" }}>
           <div style={{ fontSize: 56, marginBottom: 12 }}>📄</div>
           <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 6 }}>Umowa podpisana ✓</h2>
-          <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
+          <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 20, lineHeight: 1.6 }}>
             Twój podpis został dodany. Oczekuje na akceptację drugiej strony.
           </p>
 
@@ -486,7 +486,7 @@ export default function AgreementNew() {
             {STEP_HINTS[currentStep] && (
               <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 12px", borderRadius: 10, background: "color-mix(in srgb, var(--color-primary) 8%, transparent)", border: "1px solid color-mix(in srgb, var(--color-primary) 25%, transparent)", marginBottom: 16 }}>
                 <span style={{ fontSize: 16, flexShrink: 0 }}>{STEP_HINTS[currentStep].icon}</span>
-                <span style={{ color: "var(--color-muted-foreground)", fontSize: 12, lineHeight: 1.5 }}>{STEP_HINTS[currentStep].text}</span>
+                <span style={{ color: "var(--color-muted-foreground)", fontSize: 14, lineHeight: 1.6 }}>{STEP_HINTS[currentStep].text}</span>
               </div>
             )}
             {(() => {
@@ -494,7 +494,7 @@ export default function AgreementNew() {
               return nudge && (currentStep === "platnosc" || currentStep === "wycena" || currentStep === "szczegoly" || currentStep === "szczegoly_wynajmu") ? (
                 <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 12px", borderRadius: 10, background: `color-mix(in srgb, ${nudge.color} 10%, transparent)`, border: `1px solid color-mix(in srgb, ${nudge.color} 30%, transparent)`, marginBottom: 16 }}>
                   <span style={{ fontSize: 16, flexShrink: 0 }}>{nudge.icon}</span>
-                  <span style={{ color: "var(--color-foreground)", fontSize: 12, lineHeight: 1.5 }}>{nudge.text}</span>
+                  <span style={{ color: "var(--color-foreground)", fontSize: 14, lineHeight: 1.6 }}>{nudge.text}</span>
                 </div>
               ) : null;
             })()}
@@ -510,20 +510,20 @@ export default function AgreementNew() {
       </div>
 
       {/* Navigation */}
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: "min(560px, 100vw)", background: "var(--color-background)", borderTop: "1px solid var(--color-border)", padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", boxSizing: "border-box" }}>
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: "min(560px, 100vw)", background: "var(--color-background)", borderTop: "1px solid var(--color-border)", padding: "10px 16px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", boxSizing: "border-box" }}>
         <button
           onClick={goBack}
           disabled={stepIndex === 0}
-          style={{ width: 44, height: 44, borderRadius: 22, border: "1px solid var(--color-border)", background: "transparent", color: "var(--color-muted-foreground)", fontSize: 20, cursor: stepIndex === 0 ? "not-allowed" : "pointer", opacity: stepIndex === 0 ? 0.3 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}
+          style={{ width: 56, height: 56, borderRadius: 28, border: "1.5px solid var(--color-border)", background: "transparent", color: "var(--color-muted-foreground)", fontSize: 26, cursor: stepIndex === 0 ? "not-allowed" : "pointer", opacity: stepIndex === 0 ? 0.3 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}
         >
           ←
         </button>
-        <div style={{ color: "var(--color-muted-foreground)", fontSize: 12 }}>{stepIndex + 1} / {totalSteps}</div>
+        <div style={{ color: "var(--color-muted-foreground)", fontSize: 13, fontWeight: 600 }}>{stepIndex + 1} / {totalSteps}</div>
         {currentStep !== "podpis" && (
           <button
             onClick={goNext}
             disabled={!canGoNext()}
-            style={{ width: 44, height: 44, borderRadius: 22, border: "none", background: canGoNext() ? "var(--color-primary)" : "var(--color-border)", color: "#fff", fontSize: 20, cursor: canGoNext() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center" }}
+            style={{ width: 56, height: 56, borderRadius: 28, border: "none", background: canGoNext() ? "var(--color-primary)" : "var(--color-border)", color: "#fff", fontSize: 26, cursor: canGoNext() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center" }}
           >
             →
           </button>
@@ -541,8 +541,8 @@ function StepRola({ data, update, goNext }: { data: WizardData; update: (p: Part
   ];
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Tworzysz jako...</h2>
-      <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 20, lineHeight: 1.5 }}>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Tworzysz jako...</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 20, lineHeight: 1.5 }}>
         Określ swoją rolę w tej umowie.
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -575,8 +575,8 @@ function StepKategoria({ data, update, goNext }: { data: WizardData; update: (p:
   ];
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Nowa umowa</h2>
-      <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 18, lineHeight: 1.5 }}>Wybierz kategorię umowy.</p>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Nowa umowa</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 18, lineHeight: 1.5 }}>Wybierz kategorię umowy.</p>
       <div style={tileGrid}>
         {categories.map(c => (
           <div
@@ -585,7 +585,7 @@ function StepKategoria({ data, update, goNext }: { data: WizardData; update: (p:
             style={{ ...cardStyle(false), cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", minWidth: 0 }}
           >
             <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>{c.icon}</span>
-            <span style={{ color: "var(--color-foreground)", fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.label}</span>
+            <span style={{ color: "var(--color-foreground)", fontSize: 15, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.label}</span>
           </div>
         ))}
       </div>
@@ -598,20 +598,20 @@ function StepPodkategoria({ data, update, goNext }: { data: WizardData; update: 
   if (data.category === "wlasna") {
     return (
       <div>
-        <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 16 }}>Własna umowa</h2>
-        <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 16 }}>Podaj szczegóły na kolejnych krokach.</p>
+        <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Własna umowa</h2>
+        <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 16 }}>Podaj szczegóły na kolejnych krokach.</p>
       </div>
     );
   }
   const subs = SUBCATEGORIES[data.category] ?? [];
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Podkategoria</h2>
-      <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 18, lineHeight: 1.5 }}>Wybierz rodzaj umowy.</p>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Podkategoria</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 18, lineHeight: 1.5 }}>Wybierz rodzaj umowy.</p>
       <div style={tileGrid}>
         {subs.map(s => (
           <div key={s} onClick={() => { update({ subcategory: s }); goNext(); }} style={{ ...cardStyle(false), cursor: "pointer", padding: "10px 12px", minWidth: 0 }}>
-            <div style={{ color: "var(--color-foreground)", fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s}</div>
+            <div style={{ color: "var(--color-foreground)", fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s}</div>
           </div>
         ))}
       </div>
@@ -642,7 +642,7 @@ function StepStrony({ data, update }: { data: WizardData; update: (p: Partial<Wi
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-        <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, margin: 0 }}>Strony umowy</h2>
+        <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, margin: 0 }}>Strony umowy</h2>
         <span style={{ fontSize: 11, fontWeight: 700, color: "#16a34a", background: "color-mix(in srgb, #16a34a 12%, transparent)", border: "1px solid color-mix(in srgb, #16a34a 30%, transparent)", borderRadius: 20, padding: "2px 8px", whiteSpace: "nowrap" }}>🔒 Dane chronione</span>
       </div>
       <PartyForm title={clientLabel} party={data.client} onChange={v => update({ client: v })} highlight={iAmClient} />
@@ -665,8 +665,8 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
   const currencies: CurrencyCode[] = ["PLN", "EUR", "USD", "GBP", "CZK"];
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Sposób wyceny</h2>
-      <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 16 }}>Wybierz model rozliczenia.</p>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Sposób wyceny</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 16 }}>Wybierz model rozliczenia.</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
         {opts.map(o => {
           const active = data.pricingMethod === o.value;
@@ -718,8 +718,8 @@ function StepTermin({ data, update }: { data: WizardData; update: (p: Partial<Wi
   ];
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Termin</h2>
-      <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 16 }}>Kiedy ma być wykonana umowa?</p>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Termin</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 16 }}>Kiedy ma być wykonana umowa?</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
         {opts.map(o => {
           const active = data.deadlineType === o.value;
@@ -775,7 +775,7 @@ function StepZakres({ data, update }: { data: WizardData; update: (p: Partial<Wi
 
   if (data.category === "usluga") return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 16 }}>Zakres usługi</h2>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Zakres usługi</h2>
       <div style={{ marginBottom: 12 }}>
         <SectionLabel>Co ma być wykonane?</SectionLabel>
         <textarea value={data.scopeDescription} onChange={e => update({ scopeDescription: e.target.value })} placeholder="Opisz zakres prac..." style={textareaStyle} />
@@ -794,7 +794,7 @@ function StepZakres({ data, update }: { data: WizardData; update: (p: Partial<Wi
 
   if (data.category === "remont") return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 16 }}>Zakres remontu</h2>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Zakres remontu</h2>
       <div style={{ marginBottom: 12 }}>
         <SectionLabel>Zakres prac</SectionLabel>
         <textarea value={data.scopeDescription} onChange={e => update({ scopeDescription: e.target.value })} placeholder="Opisz prace remontowe..." style={textareaStyle} />
@@ -823,7 +823,7 @@ function StepZakres({ data, update }: { data: WizardData; update: (p: Partial<Wi
 
   if (data.category === "sprzedaz") return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 16 }}>Opis przedmiotu</h2>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Opis przedmiotu</h2>
       <div style={{ marginBottom: 12 }}>
         <SectionLabel>Opis przedmiotu</SectionLabel>
         <textarea value={data.itemDescription} onChange={e => update({ itemDescription: e.target.value })} placeholder="Opisz przedmiot sprzedaży..." style={textareaStyle} />
@@ -841,7 +841,7 @@ function StepZakres({ data, update }: { data: WizardData; update: (p: Partial<Wi
 
   if (data.category === "wynajem") return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 16 }}>Opis przedmiotu/lokalu</h2>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Opis przedmiotu/lokalu</h2>
       <div style={{ marginBottom: 12 }}>
         <SectionLabel>Opis</SectionLabel>
         <textarea value={data.rentalDescription} onChange={e => update({ rentalDescription: e.target.value })} placeholder="Opis lokalu lub przedmiotu wynajmu..." style={textareaStyle} />
@@ -858,7 +858,7 @@ function StepZakres({ data, update }: { data: WizardData; update: (p: Partial<Wi
 
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 16 }}>Własna umowa</h2>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Własna umowa</h2>
       <div style={{ marginBottom: 12 }}>
         <SectionLabel>Nazwa umowy</SectionLabel>
         <input value={data.customTitle} onChange={e => update({ customTitle: e.target.value })} placeholder="np. Umowa o świadczenie usług" style={inputStyle} />
@@ -891,7 +891,7 @@ function StepPomieszczenia({ data, update }: { data: WizardData; update: (p: Par
 
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 16 }}>Pomieszczenia</h2>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Pomieszczenia</h2>
       {data.rooms.map(r => (
         <div key={r.id} style={{ ...sectionCard, position: "relative" }}>
           <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
@@ -955,14 +955,14 @@ function StepSzczegolySprzedaz({ data, update }: { data: WizardData; update: (p:
 
   if (!isElectronics) return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 16 }}>Szczegóły sprzedaży</h2>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Szczegóły sprzedaży</h2>
       <p style={{ color: "var(--color-muted-foreground)", fontSize: 13 }}>Szczegóły przedmiotu już uzupełnione w poprzednim kroku.</p>
     </div>
   );
 
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 16 }}>Szczegóły urządzenia</h2>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Szczegóły urządzenia</h2>
       <div style={{ marginBottom: 16 }}>
         <SectionLabel>Typ urządzenia</SectionLabel>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -1056,7 +1056,7 @@ function StepSzczegolySprzedaz({ data, update }: { data: WizardData; update: (p:
 function StepSzczegolyWynajem({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 16 }}>Szczegóły wynajmu</h2>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Szczegóły wynajmu</h2>
       <div style={sectionCard}>
         <SectionLabel>Okres najmu</SectionLabel>
         <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
@@ -1094,8 +1094,8 @@ function StepDodatki({ data, update, additionalTotal }: { data: WizardData; upda
 
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Dodatkowe pozycje</h2>
-      <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 16 }}>Opcjonalne pozycje dodatkowe do umowy.</p>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Dodatkowe pozycje</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 16 }}>Opcjonalne pozycje dodatkowe do umowy.</p>
 
       {data.additionalItems.map(item => (
         <div key={item.id} style={sectionCard}>
@@ -1152,7 +1152,7 @@ function StepDodatki({ data, update, additionalTotal }: { data: WizardData; upda
 function StepWycenaKoncowa({ data, totalPrice, additionalTotal, goBack }: { data: WizardData; update: (p: Partial<WizardData>) => void; totalPrice: number; additionalTotal: number; goBack: () => void }) {
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 16 }}>Wycena końcowa</h2>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Wycena końcowa</h2>
       <div style={sectionCard}>
         {data.basePrice > 0 && (
           <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 8, borderBottom: "1px solid var(--color-border)", marginBottom: 8 }}>
@@ -1214,8 +1214,8 @@ function StepPlatnosc({ data, update, totalPrice }: { data: WizardData; update: 
 
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Płatność i depozyt</h2>
-      <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 16 }}>Jak zostanie podzielona kwota {totalPrice > 0 ? `${totalPrice.toLocaleString("pl-PL")} ${data.currency}` : ""}?</p>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Płatność i depozyt</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 16 }}>Jak zostanie podzielona kwota {totalPrice > 0 ? `${totalPrice.toLocaleString("pl-PL")} ${data.currency}` : ""}?</p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
         {paymentMethods.map(pm => {
@@ -1262,7 +1262,7 @@ function StepPlatnosc({ data, update, totalPrice }: { data: WizardData; update: 
 function StepWarunki({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 16 }}>Warunki wykonania</h2>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Warunki wykonania</h2>
 
       <div style={sectionCard}>
         <SectionLabel>Kto kupuje materiały?</SectionLabel>
@@ -1324,7 +1324,7 @@ function StepProtokol({ data, update }: { data: WizardData; update: (p: Partial<
 
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 16 }}>{title}</h2>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>{title}</h2>
 
       <div style={{ marginBottom: 16 }}>
         <SectionLabel>Status odbioru</SectionLabel>
@@ -1399,8 +1399,8 @@ function StepPrzeglad({ data, steps, goToStep, warnings, totalPrice }: { data: W
 
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Podsumowanie</h2>
-      <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 16 }}>Sprawdź wszystkie dane przed podpisaniem.</p>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Podsumowanie</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 16 }}>Sprawdź wszystkie dane przed podpisaniem.</p>
 
       {warnings.length > 0 && (
         <div style={{ background: "rgba(245,158,11,0.1)", borderRadius: 10, border: "1px solid #f59e0b", padding: 12, marginBottom: 14 }}>
@@ -1458,8 +1458,8 @@ function StepPodpis({ data, update, setSigned }: { data: WizardData; update: (p:
 
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Podpis i zaproszenie</h2>
-      <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 20, lineHeight: 1.5 }}>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Podpis i zaproszenie</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 20, lineHeight: 1.5 }}>
         Podpisz jako {myLabel.toLowerCase()} i zaproś drugą stronę.
       </p>
 
@@ -1481,7 +1481,7 @@ function StepPodpis({ data, update, setSigned }: { data: WizardData; update: (p:
           }}>
             {accepted && <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>}
           </div>
-          <span style={{ color: "var(--color-foreground)", fontSize: 13, lineHeight: 1.5 }}>
+          <span style={{ color: "var(--color-foreground)", fontSize: 15, lineHeight: 1.6 }}>
             Akceptuję warunki umowy i potwierdzam podpisanie jako {myLabel.toLowerCase()}.
           </span>
         </div>
