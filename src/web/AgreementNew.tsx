@@ -73,6 +73,13 @@ interface ElectronicsDetails {
   consoleOnline: boolean;
 }
 
+interface UnitItem {
+  id: string;
+  name: string;
+  unitPrice: number;
+  quantity: number;
+}
+
 interface WizardData {
   myRole: "client" | "contractor" | "";
   inviteContact: string;
@@ -134,7 +141,7 @@ interface WizardData {
   protocolIssues: string;
   protocolFixDeadline: string;
   estimatedHours: number;
-  unitCount: number;
+  unitItems: UnitItem[];
   rentalDays: number;
   rentalWeeks: number;
   rentalMonths: number;
@@ -163,7 +170,7 @@ const INITIAL: WizardData = {
   warranty: false, warrantyDays: 30, latePenalty: false, latePenaltyAmount: 50,
   protocolStatus: "", beforePhotos: false, afterPhotos: false,
   protocolDesc: "", protocolIssues: "", protocolFixDeadline: "", releaseDeposit: false,
-  estimatedHours: 0, unitCount: 0,
+  estimatedHours: 0, unitItems: [],
   rentalDays: 0, rentalWeeks: 0, rentalMonths: 0,
   signed: false,
 };
@@ -712,6 +719,91 @@ function StagesEditor({ data, update }: { data: WizardData; update: (p: Partial<
   );
 }
 
+function UnitsEditor({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
+  const items = data.unitItems;
+  const total = items.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
+
+  const addItem = () => update({
+    unitItems: [...items, { id: Date.now().toString(), name: "", unitPrice: 0, quantity: 1 }],
+  });
+  const updateItem = (id: string, patch: Partial<UnitItem>) =>
+    update({ unitItems: items.map(i => i.id === id ? { ...i, ...patch } : i) });
+  const removeItem = (id: string) =>
+    update({ unitItems: items.filter(i => i.id !== id) });
+
+  return (
+    <div style={{ marginTop: 4 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <SectionLabel>Pozycje</SectionLabel>
+        {total > 0 && (
+          <span style={{ color: "var(--color-primary)", fontSize: 14, fontWeight: 700 }}>
+            Σ {total.toLocaleString("pl-PL")} {data.currency}
+          </span>
+        )}
+      </div>
+
+      {items.length === 0 && (
+        <div style={{ padding: 16, borderRadius: 10, border: "1px dashed var(--color-border)", textAlign: "center", color: "var(--color-muted-foreground)", fontSize: 14, marginBottom: 10 }}>
+          Dodaj pierwszą pozycję ↓
+        </div>
+      )}
+
+      {items.map(item => (
+        <div key={item.id} style={{ ...sectionCard, marginBottom: 8, padding: "12px 14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <input
+              value={item.name}
+              onChange={e => updateItem(item.id, { name: e.target.value })}
+              placeholder="Nazwa (np. TV, sofa…)"
+              style={{ ...inputStyle, flex: 1, padding: "8px 12px", fontSize: 15 }}
+            />
+            <button onClick={() => removeItem(item.id)} style={{ border: "none", background: "transparent", color: "var(--color-muted-foreground)", fontSize: 20, cursor: "pointer", padding: "4px", flexShrink: 0 }}>×</button>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ flex: 2 }}>
+              <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Cena / szt.</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  type="number"
+                  value={item.unitPrice || ""}
+                  onChange={e => updateItem(item.id, { unitPrice: parseFloat(e.target.value) || 0 })}
+                  placeholder="0"
+                  style={{ ...inputStyle, fontSize: 16, fontWeight: 700 }}
+                />
+                <span style={{ color: "var(--color-muted-foreground)", fontSize: 13, flexShrink: 0 }}>{data.currency}</span>
+              </div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Ilość</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button onClick={() => updateItem(item.id, { quantity: Math.max(1, item.quantity - 1) })} style={{ width: 32, height: 40, borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-foreground)", fontSize: 18, cursor: "pointer", flexShrink: 0 }}>−</button>
+                <input
+                  type="number"
+                  value={item.quantity}
+                  onChange={e => updateItem(item.id, { quantity: Math.max(1, parseInt(e.target.value) || 1) })}
+                  style={{ ...inputStyle, fontSize: 16, fontWeight: 700, textAlign: "center", padding: "8px 4px" }}
+                />
+                <button onClick={() => updateItem(item.id, { quantity: item.quantity + 1 })} style={{ width: 32, height: 40, borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-foreground)", fontSize: 18, cursor: "pointer", flexShrink: 0 }}>+</button>
+              </div>
+            </div>
+          </div>
+          {item.unitPrice > 0 && item.quantity > 0 && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+              <span style={{ color: "var(--color-primary)", fontSize: 15, fontWeight: 700 }}>
+                = {(item.unitPrice * item.quantity).toLocaleString("pl-PL")} {data.currency}
+              </span>
+            </div>
+          )}
+        </div>
+      ))}
+
+      <button onClick={addItem} style={{ ...btnSecondary, width: "100%", padding: 12, fontSize: 15, borderStyle: "dashed" }}>
+        + Dodaj pozycję
+      </button>
+    </div>
+  );
+}
+
 function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
   const opts = PRICING_OPTIONS[data.category] ?? PRICING_OPTIONS["wlasna"];
   const currencies: CurrencyCode[] = ["PLN", "EUR", "USD", "GBP", "CZK"];
@@ -734,7 +826,7 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
           );
         })}
       </div>
-      {data.pricingMethod !== "stages" && <div style={sectionCard}>
+      {data.pricingMethod !== "stages" && data.pricingMethod !== "unit" && <div style={sectionCard}>
         <SectionLabel>
           {data.pricingMethod === "per_month" ? "Czynsz miesięczny"
             : data.pricingMethod === "per_week" ? "Stawka tygodniowa"
@@ -779,32 +871,6 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
           </>
         )}
 
-        {/* Za sztukę */}
-        {data.pricingMethod === "unit" && (
-          <>
-            <SectionLabel>Liczba sztuk</SectionLabel>
-            <input
-              type="number"
-              value={data.unitCount || ""}
-              onChange={e => update({ unitCount: parseInt(e.target.value) || 0 })}
-              placeholder="np. 10"
-              style={{ ...inputStyle, fontSize: 18, fontWeight: 600, marginBottom: 10 }}
-            />
-            <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-              {[{ label: "1", u: 1 }, { label: "5", u: 5 }, { label: "10", u: 10 }, { label: "25", u: 25 }, { label: "50", u: 50 }, { label: "100", u: 100 }].map(s => (
-                <div key={s.u} onClick={() => update({ unitCount: s.u })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 13, fontWeight: data.unitCount === s.u ? 700 : 400, border: `1.5px solid ${data.unitCount === s.u ? "var(--color-primary)" : "var(--color-border)"}`, background: data.unitCount === s.u ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.unitCount === s.u ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>
-                  {s.label}
-                </div>
-              ))}
-            </div>
-            {data.basePrice > 0 && data.unitCount > 0 && (
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 10, background: "color-mix(in srgb, var(--color-primary) 10%, transparent)", border: "1px solid var(--color-primary)" }}>
-                <span style={{ color: "var(--color-muted-foreground)", fontSize: 14 }}>{data.unitCount} szt. × {data.basePrice.toLocaleString("pl-PL")} {data.currency}</span>
-                <span style={{ color: "var(--color-primary)", fontSize: 17, fontWeight: 800 }}>= {(data.basePrice * data.unitCount).toLocaleString("pl-PL")} {data.currency}</span>
-              </div>
-            )}
-          </>
-        )}
 
         {/* Za dzień */}
         {data.pricingMethod === "per_day" && (
@@ -902,6 +968,10 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
 
       {data.pricingMethod === "stages" && (
         <StagesEditor data={data} update={update} />
+      )}
+
+      {data.pricingMethod === "unit" && (
+        <UnitsEditor data={data} update={update} />
       )}
 
       {(data.pricingMethod === "per_day" || data.pricingMethod === "per_week" || data.pricingMethod === "per_month") && (
