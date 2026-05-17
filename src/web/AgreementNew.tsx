@@ -434,27 +434,42 @@ export default function AgreementNew() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--color-background)", display: "flex", flexDirection: "column", width: "100%", maxWidth: "min(560px, 100vw)", margin: "0 auto", paddingBottom: 88, boxSizing: "border-box" }}>
       {/* Progress bar */}
-      <div style={{ padding: "12px 16px 6px", position: "sticky", top: 0, background: "var(--color-background)", zIndex: 10, borderBottom: "1px solid var(--color-border)" }}>
-        <div style={{ display: "flex", gap: 4, overflowX: "auto", marginBottom: 6 }}>
+      <div style={{ padding: "10px 16px 8px", position: "sticky", top: 0, background: "var(--color-background)", zIndex: 10, borderBottom: "1px solid var(--color-border)" }}>
+        {/* Dots row */}
+        <div style={{ display: "flex", gap: 3, marginBottom: 8 }}>
           {steps.map((s, i) => {
             const active = i === stepIndex;
             const done = i < stepIndex;
             return (
-              <div key={s.id} onClick={() => done && setStepIndex(i)} style={{ flex: "0 0 auto", cursor: done ? "pointer" : "default", minWidth: 0 }}>
-                <div style={{ height: 3, borderRadius: 2, background: active || done ? "var(--color-primary)" : "var(--color-border)", marginBottom: 3, width: "100%", minWidth: 28 }} />
-                <div style={{ fontSize: 8, color: active ? "var(--color-primary)" : "var(--color-muted-foreground)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3, whiteSpace: "nowrap" }}>{s.label}</div>
-              </div>
+              <div
+                key={s.id}
+                onClick={() => done && setStepIndex(i)}
+                title={s.label}
+                style={{
+                  flex: 1, height: 4, borderRadius: 2,
+                  background: active ? "var(--color-primary)" : done ? "color-mix(in srgb, var(--color-primary) 55%, transparent)" : "var(--color-border)",
+                  cursor: done ? "pointer" : "default",
+                  transition: "background 0.2s",
+                }}
+              />
             );
           })}
         </div>
+        {/* Step label + breadcrumb + % */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, display: "flex", gap: 6, alignItems: "center" }}>
-            {data.category && <span style={{ color: "var(--color-primary)", fontWeight: 700 }}>{CATEGORY_LABELS[data.category]}</span>}
-            {data.subcategory && <><span style={{ color: "var(--color-border)" }}>›</span><span>{data.subcategory}</span></>}
+          <div style={{ display: "flex", gap: 6, alignItems: "center", minWidth: 0 }}>
+            <span style={{ color: "var(--color-primary)", fontSize: 12, fontWeight: 800 }}>
+              {steps[stepIndex]?.label}
+            </span>
+            {data.category && (
+              <span style={{ color: "var(--color-muted-foreground)", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {" · "}{CATEGORY_LABELS[data.category]}{data.subcategory ? ` › ${data.subcategory}` : ""}
+              </span>
+            )}
           </div>
-          <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 600 }}>
+          <span style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 600, flexShrink: 0, marginLeft: 8 }}>
             {Math.round((stepIndex / (totalSteps - 1)) * 100)}%
-          </div>
+          </span>
         </div>
       </div>
 
@@ -562,14 +577,14 @@ function StepKategoria({ data, update, goNext }: { data: WizardData; update: (p:
     <div>
       <h2 style={{ color: "var(--color-foreground)", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Nowa umowa</h2>
       <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 18, lineHeight: 1.5 }}>Wybierz kategorię umowy.</p>
-      <div style={{ ...tileGrid, gridTemplateColumns: "1fr 1fr" }}>
+      <div style={tileGrid}>
         {categories.map(c => (
           <div
             key={c.value}
             onClick={() => { update({ category: c.value, subcategory: "" }); goNext(); }}
-            style={{ ...cardStyle(false), cursor: "pointer", display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", minWidth: 0 }}
+            style={{ ...cardStyle(false), cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", minWidth: 0 }}
           >
-            <span style={{ fontSize: 22, flexShrink: 0 }}>{c.icon}</span>
+            <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>{c.icon}</span>
             <span style={{ color: "var(--color-foreground)", fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.label}</span>
           </div>
         ))}
@@ -595,7 +610,7 @@ function StepPodkategoria({ data, update, goNext }: { data: WizardData; update: 
       <p style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 18, lineHeight: 1.5 }}>Wybierz rodzaj umowy.</p>
       <div style={tileGrid}>
         {subs.map(s => (
-          <div key={s} onClick={() => { update({ subcategory: s }); goNext(); }} style={{ ...cardStyle(false), cursor: "pointer", padding: "12px 14px", minWidth: 0 }}>
+          <div key={s} onClick={() => { update({ subcategory: s }); goNext(); }} style={{ ...cardStyle(false), cursor: "pointer", padding: "10px 12px", minWidth: 0 }}>
             <div style={{ color: "var(--color-foreground)", fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s}</div>
           </div>
         ))}
