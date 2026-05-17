@@ -10,7 +10,7 @@ const STAGE_PRESETS: { name: string; icon: string; scope: string[] }[] = [
   { name: 'Rozbiórka', icon: '🔨', scope: ['Wyburzenia', 'Wywóz gruzu', 'Ochrona podłóg'] },
   { name: 'Instalacje el.', icon: '⚡', scope: ['Okablowanie', 'Rozdzielnia', 'Punkty świetlne', 'Gniazdka'] },
   { name: 'Hydraulika', icon: '🔧', scope: ['Rury wod-kan', 'Grzejniki', 'Podejścia'] },
-  { name: 'Tynki i wylewki', icon: '🪟', scope: ['Tynki wewnętrzne', 'Wylewki samopoziomujące', 'Szpachlowanie'] },
+  { name: 'Tynki i wylewki', icon: '🪟', scope: ['Tynki wewnętrzne', 'Wylewki', 'Szpachlowanie'] },
   { name: 'Glazura', icon: '🚿', scope: ['Płytki ścienne', 'Terakota', 'Fugowanie', 'Silikon'] },
   { name: 'Malowanie', icon: '🎨', scope: ['Gruntowanie', 'Malowanie ścian', 'Malowanie sufitów', 'Lamperie'] },
   { name: 'Podłogi', icon: '🪵', scope: ['Panele', 'Parkiet', 'Listwy', 'Cokoły'] },
@@ -19,7 +19,7 @@ const STAGE_PRESETS: { name: string; icon: string; scope: string[] }[] = [
   { name: 'Odbiór końcowy', icon: '✅', scope: ['Sprzątanie', 'Protokół odbioru', 'Poprawki'] },
 ];
 
-const SCOPE_OPTIONS = ['Wyburzenia', 'Wywóz gruzu', 'Okablowanie', 'Rozdzielnia', 'Punkty świetlne', 'Gniazdka', 'Rury wod-kan', 'Grzejniki', 'Tynki wewnętrzne', 'Wylewki', 'Szpachlowanie', 'Płytki ścienne', 'Terakota', 'Fugowanie', 'Malowanie ścian', 'Malowanie sufitów', 'Panele', 'Parkiet', 'Listwy', 'Kabina/wanna', 'WC', 'Umywalka', 'Meble kuchenne', 'Blat', 'Sprzątanie', 'Protokół odbioru'];
+const SCOPE_OPTIONS = ['Wyburzenia', 'Wywóz gruzu', 'Ochrona podłóg', 'Okablowanie', 'Rozdzielnia', 'Punkty świetlne', 'Gniazdka', 'Rury wod-kan', 'Grzejniki', 'Podejścia', 'Tynki wewnętrzne', 'Wylewki', 'Szpachlowanie', 'Płytki ścienne', 'Terakota', 'Fugowanie', 'Silikon', 'Gruntowanie', 'Malowanie ścian', 'Malowanie sufitów', 'Lamperie', 'Panele', 'Parkiet', 'Listwy', 'Cokoły', 'Kabina/wanna', 'WC', 'Umywalka', 'Lustra', 'Akcesoria', 'Meble kuchenne', 'Blat', 'AGD', 'Kafelki', 'Sprzątanie', 'Protokół odbioru', 'Poprawki'];
 
 function StageCard({ stage, index, onUpdate, onRemove, currencySymbol, formatAmount }: { stage: Stage; index: number; onUpdate: (s: Stage) => void; onRemove: () => void; currencySymbol: string; formatAmount: (n: number) => string }) {
   const [expanded, setExpanded] = useState(true);
@@ -40,6 +40,14 @@ function StageCard({ stage, index, onUpdate, onRemove, currencySymbol, formatAmo
 
       {expanded && (
         <View style={sStyles.body}>
+          <Text style={sStyles.fieldLabel}>Nazwa etapu</Text>
+          <TextInput
+            style={sStyles.input}
+            value={stage.name}
+            onChangeText={v => onUpdate({ ...stage, name: v })}
+            placeholder="Nazwa etapu"
+            placeholderTextColor={C.textMuted}
+          />
           <Text style={sStyles.fieldLabel}>Zakres prac</Text>
           <View style={sStyles.scopeGrid}>
             {SCOPE_OPTIONS.map(item => (
