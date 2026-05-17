@@ -310,7 +310,9 @@ export default function AgreementNew() {
   const { defaultCurrency } = useAppStore();
   const [stepIndex, setStepIndex] = useState(0);
   const [data, setData] = useState<WizardData>({ ...INITIAL, currency: defaultCurrency });
-  const [signed, setSigned] = useState(false);
+  const [contractPhase, setContractPhase] = useState<
+    "" | "awaiting_counterparty" | "awaiting_deposit" | "in_progress" | "awaiting_release" | "completed"
+  >("");
 
   useEffect(() => {
     document.body.style.overflowX = "hidden";
@@ -373,61 +375,24 @@ export default function AgreementNew() {
       case "warunki": return <StepWarunki data={data} update={update} />;
       case "protokol": return <StepProtokol data={data} update={update} />;
       case "przeglad": return <StepPrzeglad data={data} steps={steps} goToStep={setStepIndex} warnings={warnings} totalPrice={totalPrice} />;
-      case "podpis": return <StepPodpis data={data} update={update} signed={signed} setSigned={setSigned} />;
+      case "podpis": return <StepPodpis data={data} update={update} onSign={() => setContractPhase("awaiting_counterparty")} />;
       default: return null;
     }
   };
 
-  if (signed) {
-    const otherParty = data.myRole === "contractor" ? data.client : data.contractor;
-    const myParty = data.myRole === "contractor" ? data.contractor : data.client;
-    const invited = data.inviteContact || otherParty.email || otherParty.phone;
-    const otherLabel = data.myRole === "contractor"
-      ? (data.category === "wynajem" ? "Najemca" : data.category === "sprzedaz" ? "Kupujący" : "Zleceniodawca")
-      : (data.category === "wynajem" ? "Wynajmujący" : data.category === "sprzedaz" ? "Sprzedający" : "Wykonawca");
+  if (contractPhase) {
     return (
-      <div style={{ minHeight: "100vh", background: "var(--color-background)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
-        <div style={{ textAlign: "center", maxWidth: 400, width: "100%" }}>
-          <div style={{ fontSize: 56, marginBottom: 12 }}>📄</div>
-          <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 6 }}>Umowa podpisana ✓</h2>
-          <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 20, lineHeight: 1.6 }}>
-            Twój podpis został dodany. Oczekuje na akceptację drugiej strony.
-          </p>
-
-          {totalPrice > 0 && (
-            <div style={{ background: "color-mix(in srgb, var(--color-primary) 10%, transparent)", borderRadius: 12, border: "1.5px solid var(--color-primary)", padding: 16, marginBottom: 12 }}>
-              <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, marginBottom: 4 }}>Łączna kwota umowy</div>
-              <div style={{ color: "var(--color-primary)", fontSize: 28, fontWeight: 800 }}>{totalPrice.toLocaleString("pl-PL")} {data.currency}</div>
-            </div>
-          )}
-
-          <div style={{ borderRadius: 12, border: "1px solid var(--color-border)", background: "var(--color-card)", padding: 16, marginBottom: 12, textAlign: "left" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--color-muted-foreground)", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>Status umowy</div>
-            <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
-              <div style={{ width: 8, height: 8, borderRadius: 4, background: "#16a34a", flexShrink: 0 }} />
-              <span style={{ color: "var(--color-foreground)", fontSize: 13 }}>
-                <b>{myParty.name || "Ty"}</b> — podpisano ✓
-              </span>
-            </div>
-            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <div style={{ width: 8, height: 8, borderRadius: 4, background: "#f59e0b", flexShrink: 0 }} />
-              <span style={{ color: "var(--color-foreground)", fontSize: 13 }}>
-                <b>{otherParty.name || invited || otherLabel}</b> — oczekuje na akceptację
-              </span>
-            </div>
-          </div>
-
-          {invited && (
-            <div style={{ borderRadius: 10, border: "1px solid color-mix(in srgb, #16a34a 30%, transparent)", background: "color-mix(in srgb, #16a34a 8%, transparent)", padding: 12, marginBottom: 12 }}>
-              <div style={{ color: "#16a34a", fontSize: 12, fontWeight: 600 }}>📤 Zaproszenie wysłane do: {invited}</div>
-            </div>
-          )}
-
-          <button onClick={() => { setSigned(false); setStepIndex(0); setData({ ...INITIAL, currency: defaultCurrency }); }} style={{ ...btnSecondary, width: "100%", marginTop: 4 }}>
-            Nowa umowa
-          </button>
-        </div>
-      </div>
+      <ContractLifecycle
+        data={data}
+        phase={contractPhase}
+        setPhase={setContractPhase}
+        totalPrice={totalPrice}
+        onNewContract={() => {
+          setContractPhase("");
+          setStepIndex(0);
+          setData({ ...INITIAL, currency: defaultCurrency });
+        }}
+      />
     );
   }
 
@@ -1444,7 +1409,7 @@ function StepPrzeglad({ data, steps, goToStep, warnings, totalPrice }: { data: W
 }
 
 // ——— STEP 14: Podpis
-function StepPodpis({ data, update, setSigned }: { data: WizardData; update: (p: Partial<WizardData>) => void; signed: boolean; setSigned: (v: boolean) => void }) {
+function StepPodpis({ data, update, onSign }: { data: WizardData; update: (p: Partial<WizardData>) => void; onSign: () => void }) {
   const [accepted, setAccepted] = useState(false);
   const myParty = data.myRole === "contractor" ? data.contractor : data.client;
   const otherParty = data.myRole === "contractor" ? data.client : data.contractor;
@@ -1511,7 +1476,7 @@ function StepPodpis({ data, update, setSigned }: { data: WizardData; update: (p:
       {/* CTA */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 20 }}>
         <button
-          onClick={() => { if (accepted) setSigned(true); }}
+          onClick={() => { if (accepted) onSign(); }}
           disabled={!accepted}
           style={{ ...btnPrimary, width: "100%", padding: "16px 0", fontSize: 15, opacity: accepted ? 1 : 0.45, cursor: accepted ? "pointer" : "not-allowed" }}
         >
@@ -1534,6 +1499,162 @@ function StepPodpis({ data, update, setSigned }: { data: WizardData; update: (p:
           📄 Możesz pobrać PDF
         </div>
       </div>
+    </div>
+  );
+}
+
+// ——— CONTRACT LIFECYCLE (post-wizard escrow flow)
+type ContractPhase = "" | "awaiting_counterparty" | "awaiting_deposit" | "in_progress" | "awaiting_release" | "completed";
+
+function ContractLifecycle({
+  data, phase, setPhase, totalPrice, onNewContract,
+}: {
+  data: WizardData;
+  phase: ContractPhase;
+  setPhase: (p: ContractPhase) => void;
+  totalPrice: number;
+  onNewContract: () => void;
+}) {
+  const isClient = data.myRole === "client";
+  const myParty = isClient ? data.client : data.contractor;
+  const otherParty = isClient ? data.contractor : data.client;
+  const clientLabel = data.category === "wynajem" ? "Najemca" : data.category === "sprzedaz" ? "Kupujący" : "Zleceniodawca";
+  const contractorLabel = data.category === "wynajem" ? "Wynajmujący" : data.category === "sprzedaz" ? "Sprzedający" : "Wykonawca";
+  const otherLabel = isClient ? contractorLabel : clientLabel;
+  const invited = data.inviteContact || otherParty.email || otherParty.phone || otherLabel;
+
+  const PHASES: { id: ContractPhase; icon: string; label: string; who: string; desc: string }[] = [
+    { id: "awaiting_counterparty", icon: "✍️", label: "Akceptacja umowy", who: contractorLabel, desc: `${contractorLabel} przegląda i podpisuje umowę` },
+    { id: "awaiting_deposit",      icon: "💳", label: "Wpłata na escrow",  who: clientLabel,     desc: `${clientLabel} wpłaca środki — zablokowane do odbioru` },
+    { id: "in_progress",           icon: "🔨", label: "Realizacja",        who: contractorLabel, desc: `${contractorLabel} realizuje zlecenie` },
+    { id: "awaiting_release",      icon: "📋", label: "Zgłoszenie wykonania", who: contractorLabel, desc: `${contractorLabel} wysyła potwierdzenie wykonania` },
+    { id: "completed",             icon: "🔓", label: "Odblokowanie środków", who: clientLabel,  desc: `${clientLabel} zatwierdza odbiór → środki trafiają do ${contractorLabel.toLowerCase()}a` },
+  ];
+
+  const phaseOrder = ["awaiting_counterparty", "awaiting_deposit", "in_progress", "awaiting_release", "completed"];
+  const currentIdx = phaseOrder.indexOf(phase);
+
+  type CTA = { label: string; action: () => void; color?: string } | null;
+  const getCTA = (): CTA => {
+    if (phase === "awaiting_counterparty" && !isClient)
+      return { label: `✍️ Podpisz jako ${contractorLabel.toLowerCase()} i zaakceptuj`, action: () => setPhase("awaiting_deposit") };
+    if (phase === "awaiting_deposit" && isClient)
+      return { label: `💳 Wpłać ${totalPrice > 0 ? `${totalPrice.toLocaleString("pl-PL")} ${data.currency}` : "środki"} na escrow`, action: () => setPhase("in_progress") };
+    if (phase === "in_progress" && !isClient)
+      return { label: "📤 Zgłoś wykonanie zlecenia", action: () => setPhase("awaiting_release") };
+    if (phase === "awaiting_release" && isClient)
+      return { label: `🔓 Potwierdź odbiór i odblokuj środki`, action: () => setPhase("completed"), color: "#16a34a" };
+    return null;
+  };
+
+  const cta = getCTA();
+  const isFinished = phase === "completed";
+
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--color-background)", maxWidth: "min(560px, 100vw)", margin: "0 auto", padding: "24px 16px 40px", boxSizing: "border-box" }}>
+
+      {/* Header */}
+      <div style={{ marginBottom: 20 }}>
+        {isFinished ? (
+          <>
+            <div style={{ fontSize: 48, marginBottom: 10, textAlign: "center" }}>🎉</div>
+            <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 6, textAlign: "center" }}>Zlecenie zakończone!</h2>
+            <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, textAlign: "center", lineHeight: 1.6 }}>
+              Środki zostały odblokowane i przekazane {contractorLabel.toLowerCase()}cy.
+            </p>
+          </>
+        ) : (
+          <>
+            <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Umowa w toku</h2>
+            <p style={{ color: "var(--color-muted-foreground)", fontSize: 14, lineHeight: 1.5 }}>
+              Ty: <b>{myParty.name || "—"}</b> · Druga strona: <b>{otherParty.name || invited}</b>
+            </p>
+          </>
+        )}
+      </div>
+
+      {/* Amount badge */}
+      {totalPrice > 0 && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "color-mix(in srgb, var(--color-primary) 10%, transparent)", borderRadius: 12, border: "1.5px solid var(--color-primary)", padding: "12px 16px", marginBottom: 20 }}>
+          <div>
+            <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, marginBottom: 2 }}>Kwota umowy</div>
+            <div style={{ color: "var(--color-primary)", fontSize: 22, fontWeight: 800 }}>{totalPrice.toLocaleString("pl-PL")} {data.currency}</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, marginBottom: 2 }}>Escrow</div>
+            <div style={{ color: phase === "in_progress" || phase === "awaiting_release" ? "#f59e0b" : phase === "completed" ? "#16a34a" : "var(--color-muted-foreground)", fontSize: 14, fontWeight: 700 }}>
+              {phase === "awaiting_counterparty" || phase === "awaiting_deposit" ? "Oczekuje na wpłatę"
+                : phase === "in_progress" || phase === "awaiting_release" ? "🔒 Zablokowane"
+                : "✅ Wypłacone"}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phase timeline */}
+      <div style={{ marginBottom: 24 }}>
+        {PHASES.map((p, i) => {
+          const done = i < currentIdx;
+          const active = i === currentIdx;
+          const pending = i > currentIdx;
+          return (
+            <div key={p.id} style={{ display: "flex", gap: 14, marginBottom: i < PHASES.length - 1 ? 0 : 0 }}>
+              {/* Line + dot */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 18, flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 16,
+                  background: done ? "#16a34a" : active ? "var(--color-primary)" : "var(--color-card)",
+                  border: done ? "2px solid #16a34a" : active ? "2px solid var(--color-primary)" : "2px solid var(--color-border)",
+                }}>
+                  {done ? <span style={{ color: "#fff", fontSize: 14, fontWeight: 800 }}>✓</span> : <span style={{ filter: pending ? "grayscale(1) opacity(0.4)" : "none" }}>{p.icon}</span>}
+                </div>
+                {i < PHASES.length - 1 && (
+                  <div style={{ width: 2, flex: 1, minHeight: 20, background: done ? "#16a34a" : "var(--color-border)", margin: "3px 0" }} />
+                )}
+              </div>
+              {/* Content */}
+              <div style={{ paddingBottom: 18, flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                  <span style={{ color: done ? "#16a34a" : active ? "var(--color-foreground)" : "var(--color-muted-foreground)", fontSize: 15, fontWeight: active || done ? 700 : 500 }}>
+                    {p.label}
+                  </span>
+                  {active && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--color-primary)", background: "color-mix(in srgb, var(--color-primary) 15%, transparent)", borderRadius: 20, padding: "2px 8px" }}>TERAZ</span>}
+                </div>
+                <div style={{ color: "var(--color-muted-foreground)", fontSize: 13, lineHeight: 1.5 }}>{p.desc}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* CTA */}
+      {cta && (
+        <button
+          onClick={cta.action}
+          style={{ ...btnPrimary, width: "100%", padding: "16px", fontSize: 16, marginBottom: 12, background: cta.color || "var(--color-primary)" }}
+        >
+          {cta.label}
+        </button>
+      )}
+
+      {/* Waiting message when it's not your turn */}
+      {!cta && !isFinished && (
+        <div style={{ padding: 16, borderRadius: 12, border: "1px solid var(--color-border)", background: "var(--color-card)", marginBottom: 12, textAlign: "center" }}>
+          <div style={{ fontSize: 24, marginBottom: 8 }}>⏳</div>
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 14, lineHeight: 1.6 }}>
+            Oczekujesz na akcję drugiej strony.<br />
+            <span style={{ fontWeight: 600 }}>{otherParty.name || invited}</span> zostanie powiadomiony/a.
+          </div>
+        </div>
+      )}
+
+      {isFinished && (
+        <button onClick={onNewContract} style={{ ...btnSecondary, width: "100%", padding: "14px", marginTop: 8 }}>
+          + Nowa umowa
+        </button>
+      )}
     </div>
   );
 }
