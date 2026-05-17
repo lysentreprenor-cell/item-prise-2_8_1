@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore, type CurrencyCode } from "@/lib/store";
 
@@ -312,6 +312,15 @@ export default function AgreementNew() {
   const [data, setData] = useState<WizardData>({ ...INITIAL, currency: defaultCurrency });
   const [signed, setSigned] = useState(false);
 
+  useEffect(() => {
+    document.body.style.overflowX = "hidden";
+    document.documentElement.style.overflowX = "hidden";
+    return () => {
+      document.body.style.overflowX = "";
+      document.documentElement.style.overflowX = "";
+    };
+  }, []);
+
   const update = (patch: Partial<WizardData>) => setData(prev => ({ ...prev, ...patch }));
 
   const steps = getSteps(data.category);
@@ -423,7 +432,7 @@ export default function AgreementNew() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--color-background)", display: "flex", flexDirection: "column", width: "100%", maxWidth: 560, margin: "0 auto", paddingBottom: 88, overflow: "hidden", boxSizing: "border-box" }}>
+    <div style={{ minHeight: "100vh", background: "var(--color-background)", display: "flex", flexDirection: "column", width: "100%", maxWidth: "min(560px, 100vw)", margin: "0 auto", paddingBottom: 88, boxSizing: "border-box" }}>
       {/* Progress bar */}
       <div style={{ padding: "12px 16px 6px", position: "sticky", top: 0, background: "var(--color-background)", zIndex: 10, borderBottom: "1px solid var(--color-border)" }}>
         <div style={{ display: "flex", gap: 4, overflowX: "auto", marginBottom: 6 }}>
@@ -486,7 +495,7 @@ export default function AgreementNew() {
       </div>
 
       {/* Navigation */}
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 560, background: "var(--color-background)", borderTop: "1px solid var(--color-border)", padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", boxSizing: "border-box" }}>
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: "min(560px, 100vw)", background: "var(--color-background)", borderTop: "1px solid var(--color-border)", padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", boxSizing: "border-box" }}>
         <button
           onClick={goBack}
           disabled={stepIndex === 0}
