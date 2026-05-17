@@ -24,6 +24,12 @@ interface AdditionalItem {
   inDeposit: boolean;
 }
 
+interface PaymentStage {
+  id: string;
+  name: string;
+  amount: number;
+}
+
 interface Room {
   id: string;
   name: string;
@@ -100,6 +106,7 @@ interface WizardData {
   rentalProtocol: boolean;
   customTitle: string;
   customDesc: string;
+  paymentStages: PaymentStage[];
   rooms: Room[];
   vehicle: Partial<VehicleDetails>;
   electronics: Partial<ElectronicsDetails>;
@@ -142,7 +149,7 @@ const INITIAL: WizardData = {
   itemDescription: "", itemCondition: "", itemSerial: "",
   rentalDescription: "", rentalConditionBefore: "", rentalProtocol: false,
   customTitle: "", customDesc: "",
-  rooms: [], vehicle: {}, electronics: {},
+  paymentStages: [], rooms: [], vehicle: {}, electronics: {},
   rentalFrom: "", rentalTo: "", rentalDeposit: 0, rentalReturnNotes: "", rentalDamageLiability: false,
   additionalItems: [],
   paymentMethod: "", depositCovers: [],
@@ -405,7 +412,7 @@ if (data.category === "remont" && !data.scopeBeforePhotos) warnings.push("Brakuj
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--color-background)", display: "flex", flexDirection: "column", width: "100%", maxWidth: "min(560px, 100vw)", margin: "0 auto", paddingBottom: 88, boxSizing: "border-box" }}>
+    <div style={{ minHeight: "100vh", background: "var(--color-background)", display: "flex", flexDirection: "column", width: "100%", maxWidth: "min(560px, 100vw)", margin: "0 auto", paddingBottom: 120, boxSizing: "border-box" }}>
       {/* Progress bar */}
       <div style={{ padding: "10px 16px 8px", position: "sticky", top: 0, background: "var(--color-background)", zIndex: 10, borderBottom: "1px solid var(--color-border)" }}>
         {/* Dots row */}
@@ -628,6 +635,76 @@ function StepStrony({ data, update }: { data: WizardData; update: (p: Partial<Wi
 }
 
 // ——— STEP 4: Wycena
+function StagesEditor({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
+  const stages = data.paymentStages;
+  const total = stages.reduce((s, e) => s + e.amount, 0);
+
+  const addStage = () => update({
+    paymentStages: [...stages, { id: Date.now().toString(), name: `Etap ${stages.length + 1}`, amount: 0 }],
+  });
+  const updateStage = (id: string, patch: Partial<PaymentStage>) =>
+    update({ paymentStages: stages.map(s => s.id === id ? { ...s, ...patch } : s) });
+  const removeStage = (id: string) =>
+    update({ paymentStages: stages.filter(s => s.id !== id) });
+
+  return (
+    <div style={{ marginTop: 4 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <SectionLabel>Etapy płatności</SectionLabel>
+        {total > 0 && (
+          <span style={{ color: "var(--color-primary)", fontSize: 14, fontWeight: 700 }}>
+            Σ {total.toLocaleString("pl-PL")} {data.currency}
+          </span>
+        )}
+      </div>
+
+      {stages.length === 0 && (
+        <div style={{ padding: "16px", borderRadius: 10, border: "1px dashed var(--color-border)", textAlign: "center", color: "var(--color-muted-foreground)", fontSize: 14, marginBottom: 10 }}>
+          Dodaj pierwszy etap ↓
+        </div>
+      )}
+
+      {stages.map((stage, i) => (
+        <div key={stage.id} style={{ ...sectionCard, marginBottom: 8, padding: "12px 14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <span style={{ color: "var(--color-primary)", fontSize: 11, fontWeight: 800, background: "color-mix(in srgb, var(--color-primary) 12%, transparent)", borderRadius: 4, padding: "2px 8px", flexShrink: 0 }}>
+              {i + 1}
+            </span>
+            <input
+              value={stage.name}
+              onChange={e => updateStage(stage.id, { name: e.target.value })}
+              style={{ ...inputStyle, flex: 1, padding: "8px 12px", fontSize: 15 }}
+            />
+            <button
+              onClick={() => removeStage(stage.id)}
+              style={{ border: "none", background: "transparent", color: "var(--color-muted-foreground)", fontSize: 18, cursor: "pointer", padding: "4px", flexShrink: 0 }}
+            >
+              ×
+            </button>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              type="number"
+              value={stage.amount || ""}
+              onChange={e => updateStage(stage.id, { amount: parseFloat(e.target.value) || 0 })}
+              placeholder="0"
+              style={{ ...inputStyle, fontSize: 18, fontWeight: 700, flex: 1 }}
+            />
+            <span style={{ color: "var(--color-muted-foreground)", fontSize: 15, fontWeight: 600, flexShrink: 0 }}>{data.currency}</span>
+          </div>
+        </div>
+      ))}
+
+      <button
+        onClick={addStage}
+        style={{ ...btnSecondary, width: "100%", padding: "12px", fontSize: 15, borderStyle: "dashed" }}
+      >
+        + Dodaj etap
+      </button>
+    </div>
+  );
+}
+
 function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
   const opts = PRICING_OPTIONS[data.category] ?? PRICING_OPTIONS["wlasna"];
   const currencies: CurrencyCode[] = ["PLN", "EUR", "USD", "GBP", "CZK"];
@@ -650,7 +727,7 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
           );
         })}
       </div>
-      <div style={sectionCard}>
+      {data.pricingMethod !== "stages" && <div style={sectionCard}>
         <SectionLabel>
           {data.pricingMethod === "per_month" ? "Czynsz miesięczny" : "Kwota bazowa"}
           {" "}({data.currency})
@@ -673,7 +750,11 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
             );
           })}
         </div>
-      </div>
+      </div>}
+
+      {data.pricingMethod === "stages" && (
+        <StagesEditor data={data} update={update} />
+      )}
 
       {data.pricingMethod === "per_month" && (
         <div style={{ ...sectionCard, border: "1.5px solid var(--color-primary)" }}>
