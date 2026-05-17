@@ -34,6 +34,17 @@ interface Room {
   notes: string;
 }
 
+interface VehicleDetails {
+  brand: string; model: string; year: string;
+  vin: string; engineNumber: string; licensePlate: string;
+  color: string; mileage: string;
+  fuel: "benzyna" | "diesel" | "lpg" | "elektryczny" | "hybryda" | "";
+  gearbox: "manualna" | "automatyczna" | "";
+  condition: "bardzo_dobry" | "dobry" | "sredni" | "do_naprawy" | "";
+  hasServiceBook: boolean; hasTwoKeys: boolean; hasOC: boolean;
+  noAccidents: boolean; noPledge: boolean; notStolen: boolean;
+}
+
 interface ElectronicsDetails {
   type: "telefon" | "laptop" | "konsola" | "tablet" | "tv" | "inne";
   brand: string;
@@ -90,6 +101,7 @@ interface WizardData {
   customTitle: string;
   customDesc: string;
   rooms: Room[];
+  vehicle: Partial<VehicleDetails>;
   electronics: Partial<ElectronicsDetails>;
   rentalFrom: string;
   rentalTo: string;
@@ -130,7 +142,7 @@ const INITIAL: WizardData = {
   itemDescription: "", itemCondition: "", itemSerial: "",
   rentalDescription: "", rentalConditionBefore: "", rentalProtocol: false,
   customTitle: "", customDesc: "",
-  rooms: [], electronics: {},
+  rooms: [], vehicle: {}, electronics: {},
   rentalFrom: "", rentalTo: "", rentalDeposit: 0, rentalReturnNotes: "", rentalDamageLiability: false,
   additionalItems: [],
   paymentMethod: "", depositCovers: [],
@@ -289,16 +301,16 @@ function getSteps(category: string) {
     { id: "strony", label: "Strony" },
     { id: "wycena", label: "Wycena" },
     { id: "termin", label: "Termin" },
-    { id: "zakres", label: "Zakres" },
   ];
+  if (category !== "sprzedaz") base.push({ id: "zakres", label: "Zakres" });
   if (category === "remont") base.push({ id: "pomieszczenia", label: "Pomieszczenia" });
   if (category === "sprzedaz") base.push({ id: "szczegoly", label: "Szczegóły" });
   if (category === "wynajem") base.push({ id: "szczegoly_wynajmu", label: "Wynajem" });
+  base.push({ id: "dodatki", label: "Dodatki" });
+  base.push({ id: "wycena_koncowa", label: "Podsumowanie" });
+  base.push({ id: "platnosc", label: "Płatność" });
+  if (category !== "sprzedaz") base.push({ id: "warunki", label: "Warunki" });
   base.push(
-    { id: "dodatki", label: "Dodatki" },
-    { id: "wycena_koncowa", label: "Podsumowanie" },
-    { id: "platnosc", label: "Płatność" },
-    { id: "warunki", label: "Warunki" },
     { id: "protokol", label: "Protokół" },
     { id: "przeglad", label: "Przegląd" },
     { id: "podpis", label: "Podpis" },
@@ -913,15 +925,88 @@ function StepPomieszczenia({ data, update }: { data: WizardData; update: (p: Par
 // ——— STEP 7b: Szczegóły sprzedaż/elektronika
 function StepSzczegolySprzedaz({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
   const isElectronics = data.subcategory === "Elektronika";
+  const isCar = data.subcategory === "Auto/pojazd";
   const el = data.electronics;
   const updateEl = (patch: Partial<ElectronicsDetails>) => update({ electronics: { ...el, ...patch } });
+  const v = data.vehicle;
+  const updateV = (patch: Partial<VehicleDetails>) => update({ vehicle: { ...v, ...patch } });
   const deviceTypes = ["Telefon", "Laptop", "Konsola", "Tablet", "TV", "Inne"];
   const accessories = ["Ładowarka", "Pudełko", "Kabel", "Gwarancja"];
+
+  if (isCar) return (
+    <div>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Dane pojazdu</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 16, lineHeight: 1.6 }}>Pola wymagane przez polskie prawo przy umowie kupna-sprzedaży.</p>
+
+      <div style={sectionCard}>
+        <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+          <div style={{ flex: 1 }}><SectionLabel>Marka</SectionLabel><input value={v.brand ?? ""} onChange={e => updateV({ brand: e.target.value })} placeholder="np. Toyota" style={inputStyle} /></div>
+          <div style={{ flex: 1 }}><SectionLabel>Model</SectionLabel><input value={v.model ?? ""} onChange={e => updateV({ model: e.target.value })} placeholder="np. Corolla" style={inputStyle} /></div>
+        </div>
+        <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+          <div style={{ flex: 1 }}><SectionLabel>Rok produkcji</SectionLabel><input value={v.year ?? ""} onChange={e => updateV({ year: e.target.value })} placeholder="np. 2018" style={inputStyle} /></div>
+          <div style={{ flex: 1 }}><SectionLabel>Kolor</SectionLabel><input value={v.color ?? ""} onChange={e => updateV({ color: e.target.value })} placeholder="np. Srebrny" style={inputStyle} /></div>
+        </div>
+        <div style={{ marginBottom: 10 }}><SectionLabel>Nr rejestracyjny</SectionLabel><input value={v.licensePlate ?? ""} onChange={e => updateV({ licensePlate: e.target.value.toUpperCase() })} placeholder="np. WA 12345" style={inputStyle} /></div>
+        <div style={{ marginBottom: 10 }}><SectionLabel>VIN / Nr nadwozia</SectionLabel><input value={v.vin ?? ""} onChange={e => updateV({ vin: e.target.value.toUpperCase() })} placeholder="17 znaków" style={inputStyle} /></div>
+        <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+          <div style={{ flex: 1 }}><SectionLabel>Nr silnika</SectionLabel><input value={v.engineNumber ?? ""} onChange={e => updateV({ engineNumber: e.target.value })} placeholder="opcjonalnie" style={inputStyle} /></div>
+          <div style={{ flex: 1 }}><SectionLabel>Przebieg (km)</SectionLabel><input type="number" value={v.mileage ?? ""} onChange={e => updateV({ mileage: e.target.value })} placeholder="np. 95000" style={inputStyle} /></div>
+        </div>
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Rodzaj paliwa</SectionLabel>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+          {(["benzyna", "diesel", "lpg", "hybryda", "elektryczny"] as const).map(f => {
+            const labels = { benzyna: "Benzyna", diesel: "Diesel", lpg: "LPG", hybryda: "Hybryda", elektryczny: "Elektryczny" };
+            const active = v.fuel === f;
+            return <div key={f} onClick={() => updateV({ fuel: f })} style={{ padding: "8px 16px", borderRadius: 20, border: active ? "1.5px solid var(--color-primary)" : "1px solid var(--color-border)", background: active ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", cursor: "pointer", fontSize: 14, color: active ? "var(--color-primary)" : "var(--color-muted-foreground)", fontWeight: active ? 700 : 400 }}>{labels[f]}</div>;
+          })}
+        </div>
+        <SectionLabel>Skrzynia biegów</SectionLabel>
+        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+          {(["manualna", "automatyczna"] as const).map(g => {
+            const active = v.gearbox === g;
+            return <div key={g} onClick={() => updateV({ gearbox: g })} style={{ flex: 1, textAlign: "center", padding: "10px", borderRadius: 10, border: active ? "1.5px solid var(--color-primary)" : "1px solid var(--color-border)", background: active ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", cursor: "pointer", fontSize: 14, color: active ? "var(--color-primary)" : "var(--color-muted-foreground)", fontWeight: active ? 700 : 400 }}>{g.charAt(0).toUpperCase() + g.slice(1)}</div>;
+          })}
+        </div>
+        <SectionLabel>Stan techniczny</SectionLabel>
+        <div style={{ display: "flex", gap: 6 }}>
+          {([["bardzo_dobry", "Bardzo dobry"], ["dobry", "Dobry"], ["sredni", "Średni"], ["do_naprawy", "Do naprawy"]] as const).map(([val, label]) => {
+            const active = v.condition === val;
+            return <div key={val} onClick={() => updateV({ condition: val })} style={{ flex: 1, textAlign: "center", padding: "8px 4px", borderRadius: 8, border: active ? "1.5px solid var(--color-primary)" : "1px solid var(--color-border)", background: active ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", cursor: "pointer", fontSize: 11, color: active ? "var(--color-primary)" : "var(--color-muted-foreground)", fontWeight: active ? 700 : 400 }}>{label}</div>;
+          })}
+        </div>
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Dokumenty i wyposażenie</SectionLabel>
+        <Toggle on={v.hasServiceBook ?? false} onChange={val => updateV({ hasServiceBook: val })} label="Książka serwisowa" />
+        <Toggle on={v.hasTwoKeys ?? false} onChange={val => updateV({ hasTwoKeys: val })} label="2 kluczyki" />
+        <Toggle on={v.hasOC ?? false} onChange={val => updateV({ hasOC: val })} label="OC ważne przy sprzedaży" />
+      </div>
+
+      <div style={{ ...sectionCard, background: "color-mix(in srgb, #16a34a 6%, transparent)", border: "1px solid color-mix(in srgb, #16a34a 30%, transparent)" }}>
+        <SectionLabel>Oświadczenia sprzedającego</SectionLabel>
+        <Toggle on={v.noPledge ?? false} onChange={val => updateV({ noPledge: val })} label="Pojazd wolny od zastawów i obciążeń" />
+        <Toggle on={v.noAccidents ?? false} onChange={val => updateV({ noAccidents: val })} label="Nie uczestniczył w wypadkach" />
+        <Toggle on={v.notStolen ?? false} onChange={val => updateV({ notStolen: val })} label="Nie pochodzi z kradzieży" />
+      </div>
+    </div>
+  );
 
   if (!isElectronics) return (
     <div>
       <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Szczegóły sprzedaży</h2>
-      <p style={{ color: "var(--color-muted-foreground)", fontSize: 13 }}>Szczegóły przedmiotu już uzupełnione w poprzednim kroku.</p>
+      <div style={sectionCard}>
+        <SectionLabel>Opis przedmiotu</SectionLabel>
+        <textarea value={data.itemDescription} onChange={e => update({ itemDescription: e.target.value })} placeholder="Opisz przedmiot sprzedaży..." style={textareaStyle} />
+        <SectionLabel>Stan</SectionLabel>
+        <input value={data.itemCondition} onChange={e => update({ itemCondition: e.target.value })} placeholder="np. używany, sprawny" style={inputStyle} />
+        <SectionLabel>Nr seryjny (opcjonalnie)</SectionLabel>
+        <input value={data.itemSerial} onChange={e => update({ itemSerial: e.target.value })} placeholder="opcjonalnie" style={inputStyle} />
+      </div>
     </div>
   );
 
@@ -1274,23 +1359,69 @@ function StepWarunki({ data, update }: { data: WizardData; update: (p: Partial<W
 
 // ——— STEP 12: Protokół odbioru
 function StepProtokol({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
-  const title = data.category === "sprzedaz"
-    ? "Potwierdzenie przekazania rzeczy"
-    : data.category === "wynajem"
-    ? "Protokół wydania i zwrotu"
-    : "Protokół odbioru";
+  const isSale = data.category === "sprzedaz";
+  const isCar = isSale && data.subcategory === "Auto/pojazd";
 
+  if (isSale) {
+    const statuses = [
+      { value: "accepted" as ProtocolStatus, label: "Przekazano bez zastrzeżeń", color: "#22c55e" },
+      { value: "with_notes" as ProtocolStatus, label: "Przekazano z uwagami", color: "#f59e0b" },
+    ];
+    return (
+      <div>
+        <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>
+          {isCar ? "Protokół przekazania pojazdu" : "Potwierdzenie przekazania"}
+        </h2>
+        <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 16, lineHeight: 1.6 }}>
+          Kupujący potwierdza odbiór {isCar ? "pojazdu" : "przedmiotu"}.
+        </p>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+          {statuses.map(s => {
+            const active = data.protocolStatus === s.value;
+            return (
+              <div key={s.value} onClick={() => update({ protocolStatus: s.value })} style={{ ...cardStyle(active), display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 12, height: 12, borderRadius: 6, background: s.color, flexShrink: 0 }} />
+                <span style={{ flex: 1, color: active ? "var(--color-primary)" : "var(--color-foreground)", fontSize: 15, fontWeight: active ? 700 : 400 }}>{s.label}</span>
+                <div style={{ width: 20, height: 20, borderRadius: 10, border: `2px solid ${active ? "var(--color-primary)" : "var(--color-border)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {active && <div style={{ width: 10, height: 10, borderRadius: 5, background: "var(--color-primary)" }} />}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {isCar && (
+          <div style={sectionCard}>
+            <SectionLabel>Przekazano przy odbiorze</SectionLabel>
+            <Toggle on={data.beforePhotos} onChange={v => update({ beforePhotos: v })} label="Kluczyki do pojazdu" />
+            <Toggle on={data.afterPhotos} onChange={v => update({ afterPhotos: v })} label="Dowód rejestracyjny" />
+            <Toggle on={data.releaseDeposit} onChange={v => update({ releaseDeposit: v })} label="Karta pojazdu (jeśli dotyczy)" />
+          </div>
+        )}
+
+        {data.protocolStatus === "with_notes" && (
+          <div style={{ marginBottom: 12 }}>
+            <SectionLabel>Uwagi przy przekazaniu</SectionLabel>
+            <textarea value={data.protocolDesc} onChange={e => update({ protocolDesc: e.target.value })} placeholder="Opisz uwagi..." style={textareaStyle} />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Remont / Usługa / Wynajem — pełny protokół
   const statuses: { value: ProtocolStatus; label: string; color: string }[] = [
     { value: "accepted", label: "Odebrane bez uwag", color: "#22c55e" },
     { value: "with_notes", label: "Odebrane z uwagami", color: "#f59e0b" },
     { value: "needs_fixes", label: "Wymaga poprawek", color: "#ef4444" },
     { value: "rejected", label: "Odrzucone", color: "#6b7280" },
   ];
-
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>{title}</h2>
-
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>
+        {data.category === "wynajem" ? "Protokół wydania i zwrotu" : "Protokół odbioru"}
+      </h2>
       <div style={{ marginBottom: 16 }}>
         <SectionLabel>Status odbioru</SectionLabel>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1308,17 +1439,14 @@ function StepProtokol({ data, update }: { data: WizardData; update: (p: Partial<
           })}
         </div>
       </div>
-
       <div style={sectionCard}>
         <Toggle on={data.beforePhotos} onChange={v => update({ beforePhotos: v })} label="Zdjęcia przed" />
         <Toggle on={data.afterPhotos} onChange={v => update({ afterPhotos: v })} label="Zdjęcia po" />
       </div>
-
       <div style={{ marginBottom: 12 }}>
         <SectionLabel>Opis wykonania</SectionLabel>
         <textarea value={data.protocolDesc} onChange={e => update({ protocolDesc: e.target.value })} placeholder="Opisz wykonane prace..." style={textareaStyle} />
       </div>
-
       {(data.protocolStatus === "with_notes" || data.protocolStatus === "needs_fixes") && (
         <div style={{ marginBottom: 12 }}>
           <SectionLabel>Lista usterek</SectionLabel>
@@ -1327,7 +1455,6 @@ function StepProtokol({ data, update }: { data: WizardData; update: (p: Partial<
           <input type="date" value={data.protocolFixDeadline} onChange={e => update({ protocolFixDeadline: e.target.value })} style={inputStyle} />
         </div>
       )}
-
       <div style={sectionCard}>
         <Toggle on={data.releaseDeposit} onChange={v => update({ releaseDeposit: v })} label="Wypłata depozytu" />
       </div>
