@@ -210,6 +210,8 @@ interface SavedContract {
   rating?: number;
   ratingNote?: string;
   paidStages?: string[];
+  paymentSentAt?: string;
+  paymentConfirmedAt?: string;
 }
 
 const LS_DRAFT_KEY = "itemprise_draft";
@@ -3105,6 +3107,56 @@ function ContractLifecycle({
   const [disputeOpen, setDisputeOpen] = useState(false);
   const [disputeConfirm, setDisputeConfirm] = useState<"fixes" | "mediation" | "cancel" | null>(null);
   const [disputeNote, setDisputeNote] = useState("");
+  const [paymentSentAt, setPaymentSentAt] = useState<string | null>(() => {
+    try { return loadContracts().find(c => c.contractId === contractId)?.paymentSentAt || null; } catch { return null; }
+  });
+
+  const savePaymentSent = () => {
+    const ts = new Date().toISOString();
+    try {
+      const existing = loadContracts();
+      const idx = existing.findIndex(c => c.contractId === contractId);
+      if (idx >= 0) { existing[idx].paymentSentAt = ts; localStorage.setItem(LS_CONTRACTS_KEY, JSON.stringify(existing)); }
+    } catch {}
+    setPaymentSentAt(ts);
+    addContractEvent(contractId, { type: "phase_change", icon: "💸", label: "Klient potwierdził wysłanie przelewu" });
+  };
+
+  const confirmPaymentReceived = () => {
+    const ts = new Date().toISOString();
+    try {
+      const existing = loadContracts();
+      const idx = existing.findIndex(c => c.contractId === contractId);
+      if (idx >= 0) { existing[idx].paymentConfirmedAt = ts; localStorage.setItem(LS_CONTRACTS_KEY, JSON.stringify(existing)); }
+    } catch {}
+    addContractEvent(contractId, { type: "phase_change", icon: "✅", label: "Wykonawca potwierdził odbiór przelewu — realizacja rozpoczęta" });
+    setPhase("in_progress");
+  };
+
+  const sharePaymentRequest = () => {
+    const title = data.paymentTitle || [
+      data.category === "sprzedaz" ? "Sprzedaż" : data.category === "wynajem" ? "Wynajem" : "Umowa",
+      data.subcategory || "",
+    ].filter(Boolean).join(" ");
+    const lines = [
+      "Cześć! Proszę o przelew:",
+      data.bankAccount ? `Konto: ${data.bankAccount}` : null,
+      data.bankBlik ? `BLIK / Tel: ${data.bankBlik}` : null,
+      `Tytuł: ${title}`,
+      `Kwota: ${totalPrice.toLocaleString("pl-PL")} ${data.currency}`,
+      "Po potwierdzeniu odbioru od razu ruszamy z realizacją.",
+    ].filter(Boolean).join("\n");
+    if (navigator.share) navigator.share({ text: lines });
+    else navigator.clipboard.writeText(lines);
+    addContractEvent(contractId, { type: "share", icon: "📤", label: "Prośba o przelew wysłana" });
+  };
+
+  const sendPaymentReminder = () => {
+    const msg = `Cześć! Przypominam o płatności: ${totalPrice.toLocaleString("pl-PL")} ${data.currency}. ${data.bankAccount ? `Konto: ${data.bankAccount}. ` : ""}Gdy przelew dotrze, od razu zaczynam realizację.`;
+    if (navigator.share) navigator.share({ text: msg });
+    else navigator.clipboard.writeText(msg);
+    addContractEvent(contractId, { type: "note", icon: "🔔", label: "Przypomnienie o płatności wysłane" });
+  };
 
   const handleDispute = (type: "fixes" | "mediation" | "cancel") => {
     if (type === "fixes") {
@@ -3143,8 +3195,10 @@ function ContractLifecycle({
   const getCTA = (): CTA => {
     if (phase === "awaiting_counterparty" && !isClient)
       return { label: `✍️ Podpisz jako ${contractorLabel.toLowerCase()} i zaakceptuj`, action: () => setPhase("awaiting_deposit") };
-    if (phase === "awaiting_deposit" && isClient)
-      return { label: `💳 Wpłać ${totalPrice > 0 ? `${totalPrice.toLocaleString("pl-PL")} ${data.currency}` : "środki"} na escrow`, action: () => setPhase("in_progress") };
+    if (phase === "awaiting_deposit" && isClient && !paymentSentAt)
+      return { label: `💸 Wysłałem przelew${totalPrice > 0 ? ` — ${totalPrice.toLocaleString("pl-PL")} ${data.currency}` : ""}`, action: savePaymentSent };
+    if (phase === "awaiting_deposit" && !isClient && paymentSentAt)
+      return { label: "✅ Potwierdzam odbiór przelewu → start realizacji", action: confirmPaymentReceived, color: "#16a34a" };
     if (phase === "in_progress" && !isClient)
       return { label: "📤 Zgłoś wykonanie zlecenia", action: () => setPhase("awaiting_release") };
     if (phase === "awaiting_release" && isClient)
@@ -3341,6 +3395,55 @@ function ContractLifecycle({
         );
       })()}
 
+      {/* Payment sent status badge */}
+      {phase === "awaiting_deposit" && paymentSentAt && (
+        <div style={{ ...sectionCard, marginBottom: 16, border: `1.5px solid ${isClient ? "#16a34a" : "var(--color-primary)"}` }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <span style={{ fontSize: 24, flexShrink: 0 }}>💸</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 700, marginBottom: 2 }}>Przelew wysłany</div>
+              <div style={{ color: "var(--color-muted-foreground)", fontSize: 13, lineHeight: 1.5 }}>
+                {isClient
+                  ? "Czekasz na potwierdzenie odbioru przez wykonawcę"
+                  : `${otherParty.name || invited} potwierdził/a wysłanie — sprawdź swoje konto`}
+              </div>
+              <div style={{ color: "#16a34a", fontSize: 11, marginTop: 3 }}>
+                {new Date(paymentSentAt).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })} {new Date(paymentSentAt).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Contractor payment tools — awaiting_deposit */}
+      {phase === "awaiting_deposit" && !isClient && (
+        <div style={{ ...sectionCard, marginBottom: 16 }}>
+          <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 700, marginBottom: paymentSentAt ? 6 : 10 }}>
+            {paymentSentAt ? "⏳ Oczekujesz na przelew" : "💬 Przypomnij o płatności"}
+          </div>
+          {paymentSentAt ? (
+            <div style={{ color: "var(--color-muted-foreground)", fontSize: 13, lineHeight: 1.6 }}>
+              Klient potwierdził wysłanie przelewu. Gdy środki dotrą na konto — kliknij przycisk poniżej, żeby potwierdzić odbiór i rozpocząć realizację.
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={sharePaymentRequest}
+                style={{ ...btnSecondary, width: "100%", padding: "10px", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8 }}
+              >
+                📤 Wyślij dane do przelewu
+              </button>
+              <button
+                onClick={sendPaymentReminder}
+                style={{ ...btnSecondary, width: "100%", padding: "10px", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+              >
+                🔔 Wyślij przypomnienie
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Stage payment tracker */}
       {data.pricingMethod === "stages" && data.paymentStages.length > 0 && (phase === "awaiting_deposit" || phase === "in_progress" || phase === "awaiting_release" || phase === "completed") && (() => {
         const paidStages = (() => { try { const c = loadContracts().find(c => c.contractId === contractId); return c?.paidStages || []; } catch { return []; } })();
@@ -3413,12 +3516,22 @@ function ContractLifecycle({
       )}
 
       {/* Waiting message when it's not your turn */}
-      {!cta && !isFinished && (
+      {!cta && !isFinished && !(phase === "awaiting_deposit") && (
         <div style={{ padding: 16, borderRadius: 12, border: "1px solid var(--color-border)", background: "var(--color-card)", marginBottom: 12, textAlign: "center" }}>
           <div style={{ fontSize: 24, marginBottom: 8 }}>⏳</div>
           <div style={{ color: "var(--color-muted-foreground)", fontSize: 14, lineHeight: 1.6 }}>
             Oczekujesz na akcję drugiej strony.<br />
             <span style={{ fontWeight: 600 }}>{otherParty.name || invited}</span> zostanie powiadomiony/a.
+          </div>
+        </div>
+      )}
+      {/* Waiting for client to confirm sending */}
+      {phase === "awaiting_deposit" && isClient && paymentSentAt && !cta && (
+        <div style={{ padding: 16, borderRadius: 12, border: "1px solid #16a34a", background: "color-mix(in srgb, #16a34a 6%, transparent)", marginBottom: 12, textAlign: "center" }}>
+          <div style={{ fontSize: 24, marginBottom: 8 }}>✅</div>
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 14, lineHeight: 1.6 }}>
+            Przelew potwierdzony z Twojej strony.<br />
+            Czekasz na weryfikację przez <span style={{ fontWeight: 600 }}>{otherParty.name || invited}</span>.
           </div>
         </div>
       )}
