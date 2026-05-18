@@ -394,7 +394,7 @@ function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContr
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--color-background)", maxWidth: "min(560px, 100vw)", margin: "0 auto", padding: "24px 16px 48px", boxSizing: "border-box" }}>
+    <div style={{ minHeight: "100vh", background: "var(--color-background)", maxWidth: "min(560px, 100vw)", margin: "0 auto", padding: "24px 16px 100px", boxSizing: "border-box" }}>
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <div>
@@ -1161,7 +1161,7 @@ export default function AgreementNew() {
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, padding: "16px 16px 0", overflowY: "auto", overflowX: "hidden" }}>
+      <div style={{ flex: 1, padding: "16px 16px 180px", overflowY: "auto", overflowX: "hidden" }}>
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
@@ -3179,7 +3179,7 @@ function InvitationScreen({ data, contractId, totalPrice, onContinue }: {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--color-background)", maxWidth: "min(560px, 100vw)", margin: "0 auto", padding: "32px 16px 48px", boxSizing: "border-box" }}>
+    <div style={{ minHeight: "100vh", background: "var(--color-background)", maxWidth: "min(560px, 100vw)", margin: "0 auto", padding: "32px 16px 100px", boxSizing: "border-box" }}>
       {/* Sukces */}
       <div style={{ textAlign: "center", marginBottom: 24 }}>
         <div style={{ fontSize: 56, marginBottom: 10 }}>✅</div>
@@ -3483,7 +3483,7 @@ function RatingScreen({ contractId, data, onDone }: { contractId: string; data: 
   const sub = data.subcategory ? ` › ${data.subcategory}` : "";
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--color-background)", maxWidth: "min(560px, 100vw)", margin: "0 auto", padding: "40px 20px", boxSizing: "border-box", display: "flex", flexDirection: "column", alignItems: "center" }}>
+    <div style={{ minHeight: "100vh", background: "var(--color-background)", maxWidth: "min(560px, 100vw)", margin: "0 auto", padding: "40px 20px 100px", boxSizing: "border-box", display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{ fontSize: 56, marginBottom: 12 }}>{saved ? "🎊" : "🎉"}</div>
       <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 900, textAlign: "center", marginBottom: 4 }}>
         {saved ? "Ocena zapisana!" : "Umowa zakończona!"}
@@ -3714,7 +3714,7 @@ function ContractLifecycle({
   const finishedDesc = data.category === "wynajem" ? `Najem dobiegł końca. Kaucja rozliczona przez ${contractorLabel.toLowerCase()}.` : data.category === "sprzedaz" ? `Transakcja sfinalizowana. Środki przekazane ${contractorLabel.toLowerCase()}cy.` : `Środki zostały odblokowane i przekazane ${contractorLabel.toLowerCase()}cy.`;
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--color-background)", maxWidth: "min(560px, 100vw)", margin: "0 auto", padding: "20px 16px 40px", boxSizing: "border-box" }}>
+    <div style={{ minHeight: "100vh", background: "var(--color-background)", maxWidth: "min(560px, 100vw)", margin: "0 auto", padding: "20px 16px 100px", boxSizing: "border-box" }}>
 
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
