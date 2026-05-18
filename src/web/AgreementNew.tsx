@@ -2615,9 +2615,13 @@ function StepWarunki({ data, update }: { data: WizardData; update: (p: Partial<W
       )}
 
       <div style={sectionCard}>
+        <SectionLabel>Zasady współpracy</SectionLabel>
         {!isSale && !isRental && <Toggle on={data.weekendWork} onChange={v => update({ weekendWork: v })} label="Praca w weekend" />}
         {!isSale && <Toggle on={data.requireApproval} onChange={v => update({ requireApproval: v })} label="Dodatkowe prace wymagają akceptacji" />}
         <Toggle on={data.priceChangeApproval} onChange={v => update({ priceChangeApproval: v })} label="Zmiany ceny wymagają akceptacji obu stron" />
+      </div>
+      <div style={sectionCard}>
+        <SectionLabel>Gwarancja i kary</SectionLabel>
         <Toggle on={data.warranty} onChange={v => update({ warranty: v })} label={isSale ? "Gwarancja na przedmiot" : "Gwarancja na wykonanie"} />
         {data.warranty && (
           <div style={{ paddingTop: 8 }}>
@@ -2729,6 +2733,16 @@ function StepProtokol({ data, update }: { data: WizardData; update: (p: Partial<
           })}
         </div>
       </div>
+      {data.protocolStatus === "rejected" && (
+        <div style={{ marginTop: 4, marginBottom: 12, padding: "12px 14px", borderRadius: 10, background: "rgba(107,114,128,0.08)", border: "1px solid #9ca3af" }}>
+          <div style={{ color: "var(--color-foreground)", fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Co dalej?</div>
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 13, lineHeight: 1.7 }}>
+            <div>• Opisz powód odrzucenia w polu poniżej</div>
+            <div>• Otwórz spór w panelu umowy (opcja po powrocie)</div>
+            <div>• Skontaktuj się z drugą stroną bezpośrednio</div>
+          </div>
+        </div>
+      )}
       <div style={sectionCard}>
         <Toggle on={data.beforePhotos} onChange={v => update({ beforePhotos: v })} label="Zdjęcia przed" />
         <Toggle on={data.afterPhotos} onChange={v => update({ afterPhotos: v })} label="Zdjęcia po" />
@@ -2756,6 +2770,9 @@ function StepProtokol({ data, update }: { data: WizardData; update: (p: Partial<
 function StepPrzeglad({ data, steps, goToStep, warnings, totalPrice }: { data: WizardData; steps: { id: string; label: string }[]; goToStep: (i: number) => void; warnings: string[]; totalPrice: number }) {
   const [expanded, setExpanded] = useState<string[]>(["podstawy"]);
   const toggle = (id: string) => setExpanded(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const allSectionIds = ["podstawy", "wycena", "szczegoly", "szczegoly_wynajmu", "termin", "warunki", "platnosc"];
+  const allExpanded = allSectionIds.every(id => expanded.includes(id));
+  const toggleAll = () => setExpanded(allExpanded ? [] : [...allSectionIds]);
 
   const Section = ({ id, title, stepId, children }: { id: string; title: string; stepId: string; children: React.ReactNode }) => {
     const stepIdx = steps.findIndex(s => s.id === stepId);
@@ -2781,7 +2798,12 @@ function StepPrzeglad({ data, steps, goToStep, warnings, totalPrice }: { data: W
 
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Podsumowanie</h2>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+        <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, margin: 0 }}>Podsumowanie</h2>
+        <button onClick={toggleAll} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "transparent", color: "var(--color-muted-foreground)", fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+          {allExpanded ? "Zwiń ▲" : "Rozwiń ▼"}
+        </button>
+      </div>
       <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 16 }}>Sprawdź wszystkie dane przed podpisaniem.</p>
 
       {warnings.length > 0 && (
@@ -3087,13 +3109,25 @@ function InvitationScreen({ data, contractId, totalPrice, onContinue }: {
       {/* Jak to działa */}
       <div style={{ ...sectionCard, marginBottom: 20 }}>
         <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Jak to działa?</div>
-        {[
+        {(data.category === "wynajem" ? [
+          { n: "1", t: "Wyślij zaproszenie najemcy" },
+          { n: "2", t: "Najemca przegląda i podpisuje umowę" },
+          { n: "3", t: "Najemca wpłaca kaucję i pierwszy czynsz" },
+          { n: "4", t: "Najem aktywny — śledzisz przebieg na żywo" },
+          { n: "5", t: "Protokół wyjściowy i rozliczenie kaucji" },
+        ] : data.category === "sprzedaz" ? [
+          { n: "1", t: "Wyślij zaproszenie kupującemu" },
+          { n: "2", t: "Kupujący przegląda i akceptuje warunki" },
+          { n: "3", t: "Kupujący wpłaca uzgodnioną kwotę na escrow" },
+          { n: "4", t: "Przekazujesz przedmiot kupującemu" },
+          { n: "5", t: "Transakcja zakończona — środki zwolnione" },
+        ] : [
           { n: "1", t: "Wyślij zaproszenie drugiej stronie" },
           { n: "2", t: "Druga strona przegląda i podpisuje umowę" },
           { n: "3", t: "Wpłata środków na zabezpieczony escrow" },
           { n: "4", t: "Po wykonaniu pracy zatwierdzasz odbiór" },
           { n: "5", t: "Środki trafiają do wykonawcy" },
-        ].map(s => (
+        ]).map(s => (
           <div key={s.n} style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 10 }}>
             <div style={{ width: 24, height: 24, borderRadius: 12, background: "var(--color-primary)", color: "#fff", fontSize: 12, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{s.n}</div>
             <span style={{ color: "var(--color-muted-foreground)", fontSize: 14, lineHeight: 1.5, paddingTop: 2 }}>{s.t}</span>
@@ -3320,7 +3354,7 @@ function RatingScreen({ contractId, data, onDone }: { contractId: string; data: 
             Jak oceniasz tę współpracę?
           </div>
           {/* Stars */}
-          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 24 }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 8 }}>
             {[1, 2, 3, 4, 5].map(n => (
               <span
                 key={n}
@@ -3332,6 +3366,9 @@ function RatingScreen({ contractId, data, onDone }: { contractId: string; data: 
                 ★
               </span>
             ))}
+          </div>
+          <div style={{ textAlign: "center", marginBottom: 20, minHeight: 22, color: "#f59e0b", fontSize: 14, fontWeight: 700 }}>
+            {(["", "Słabo", "Przeciętnie", "Dobrze", "Bardzo dobrze", "Świetnie!"])[hover || stars] || ""}
           </div>
           {stars > 0 && (
             <div style={{ marginBottom: 20 }}>
