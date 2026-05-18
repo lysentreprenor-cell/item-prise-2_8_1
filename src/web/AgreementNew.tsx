@@ -128,6 +128,14 @@ interface WizardData {
   rentalDeposit: number;
   rentalReturnNotes: string;
   rentalDamageLiability: boolean;
+  rentalNoticePeriod: number;
+  rentalTenants: number;
+  rentalFurnitured: boolean;
+  rentalPets: "" | "allowed" | "not_allowed" | "allowed_deposit";
+  rentalKeys: number;
+  rentalParking: boolean;
+  cyclicInterval: number;
+  cyclicUnit: "days" | "weeks" | "months";
   additionalItems: AdditionalItem[];
   paymentMethod: PaymentMethodType | "";
   depositCovers: string[];
@@ -173,6 +181,8 @@ const INITIAL: WizardData = {
   customTitle: "", customDesc: "",
   paymentStages: [], rooms: [], vehicle: {}, electronics: {},
   rentalFrom: "", rentalTo: "", rentalDeposit: 0, rentalReturnNotes: "", rentalDamageLiability: false,
+  rentalNoticePeriod: 30, rentalTenants: 1, rentalFurnitured: false, rentalPets: "", rentalKeys: 1, rentalParking: false,
+  cyclicInterval: 1, cyclicUnit: "months",
   additionalItems: [],
   paymentMethod: "", depositCovers: [],
   materialsBy: "contractor", transportBy: "contractor",
@@ -319,6 +329,7 @@ function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContr
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "done" | "action">("all");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "deadline" | "value">("newest");
 
   // Stats
   const active = contracts.filter(c => c.phase && c.phase !== "completed");
@@ -338,7 +349,7 @@ function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContr
     return null;
   };
 
-  // Filter + search
+  // Filter + search + sort
   const visible = contracts.filter(c => {
     const q = search.toLowerCase();
     const matchSearch = !q ||
@@ -352,6 +363,15 @@ function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContr
       filter === "done" ? (c.phase === "completed") :
       filter === "action" ? (c.phase === "awaiting_release") : true;
     return matchSearch && matchFilter;
+  }).sort((a, b) => {
+    if (sortBy === "oldest") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    if (sortBy === "deadline") {
+      const da = a.data.deadlineSingle || "9999-99-99";
+      const db = b.data.deadlineSingle || "9999-99-99";
+      return da.localeCompare(db);
+    }
+    if (sortBy === "value") return (b.totalPrice || 0) - (a.totalPrice || 0);
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // newest default
   });
 
   const filterOpts: { key: typeof filter; label: string }[] = [
@@ -442,6 +462,26 @@ function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContr
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Sort bar */}
+      {contracts.length > 1 && (
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2, marginBottom: 12 }}>
+          {([
+            { key: "newest", label: "📅 Najnowsze" },
+            { key: "oldest", label: "⬆ Najstarsze" },
+            { key: "deadline", label: "⏰ Termin" },
+            { key: "value", label: "💰 Wartość" },
+          ] as { key: typeof sortBy; label: string }[]).map(s => (
+            <button
+              key={s.key}
+              onClick={() => setSortBy(s.key)}
+              style={{ flexShrink: 0, padding: "5px 12px", borderRadius: 20, border: `1.5px solid ${sortBy === s.key ? "var(--color-primary)" : "var(--color-border)"}`, background: sortBy === s.key ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: sortBy === s.key ? "var(--color-primary)" : "var(--color-muted-foreground)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>
       )}
 
@@ -1175,6 +1215,7 @@ function StepRola({ data, update, goNext }: { data: WizardData; update: (p: Part
 
 // ——— STEP 1: Kategoria
 function StepKategoria({ data, update, goNext }: { data: WizardData; update: (p: Partial<WizardData>) => void; goNext: () => void }) {
+  const [showLoanInfo, setShowLoanInfo] = useState(false);
   const categories: { value: Category; label: string; icon: string }[] = [
     { value: "usluga", label: "Usługa", icon: "🛠️" },
     { value: "remont", label: "Remont", icon: "🔨" },
@@ -1197,7 +1238,22 @@ function StepKategoria({ data, update, goNext }: { data: WizardData; update: (p:
             <span style={{ color: "var(--color-foreground)", fontSize: 15, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.label}</span>
           </div>
         ))}
+        {/* Pożyczka — coming soon */}
+        <div
+          onClick={() => setShowLoanInfo(v => !v)}
+          style={{ ...cardStyle(false), cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", minWidth: 0, opacity: 0.6, position: "relative", overflow: "hidden" }}
+        >
+          <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>💰</span>
+          <span style={{ color: "var(--color-foreground)", fontSize: 15, fontWeight: 700 }}>Pożyczka</span>
+          <span style={{ position: "absolute", top: 4, right: 6, fontSize: 9, fontWeight: 800, color: "#fff", background: "#f59e0b", borderRadius: 6, padding: "2px 6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Wkrótce</span>
+        </div>
       </div>
+      {showLoanInfo && (
+        <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 12, background: "color-mix(in srgb, #f59e0b 10%, transparent)", border: "1px solid #f59e0b" }}>
+          <div style={{ color: "#d97706", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>💰 Umowa pożyczki — wkrótce</div>
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 13, lineHeight: 1.6 }}>Kategoria "Pożyczka" z harmonogramem spłat i odsetkami jest w przygotowaniu. Na razie możesz skorzystać z kategorii "Własna".</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1667,9 +1723,25 @@ function StepTermin({ data, update }: { data: WizardData; update: (p: Partial<Wi
       )}
       {data.deadlineType === "cyclic" && (
         <div style={sectionCard}>
+          <SectionLabel>Powtarzaj co</SectionLabel>
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            {(["days", "weeks", "months"] as const).map(u => {
+              const labels: Record<string, string> = { days: "Dni", weeks: "Tygodnie", months: "Miesiące" };
+              const active = data.cyclicUnit === u;
+              return (
+                <div key={u} onClick={() => update({ cyclicUnit: u })} style={{ flex: 1, textAlign: "center", padding: "8px 4px", borderRadius: 10, border: `1.5px solid ${active ? "var(--color-primary)" : "var(--color-border)"}`, background: active ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", cursor: "pointer", color: active ? "var(--color-primary)" : "var(--color-foreground)", fontWeight: active ? 700 : 400, fontSize: 13 }}>{labels[u]}</div>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+            {(data.cyclicUnit === "months" ? [1, 2, 3, 6] : data.cyclicUnit === "weeks" ? [1, 2, 4] : [7, 14, 30]).map(n => (
+              <div key={n} onClick={() => update({ cyclicInterval: n })} style={{ padding: "6px 14px", borderRadius: 20, cursor: "pointer", fontSize: 13, fontWeight: data.cyclicInterval === n ? 700 : 400, border: `1.5px solid ${data.cyclicInterval === n ? "var(--color-primary)" : "var(--color-border)"}`, background: data.cyclicInterval === n ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.cyclicInterval === n ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>{n}</div>
+            ))}
+            <input type="number" value={data.cyclicInterval || ""} onChange={e => update({ cyclicInterval: parseInt(e.target.value) || 1 })} placeholder="Inna" style={{ ...inputStyle, width: 70, textAlign: "center", padding: "6px 8px", marginBottom: 0 }} min={1} />
+          </div>
           <SectionLabel>Pierwsza realizacja</SectionLabel>
           <input type="date" value={data.deadlineFrom} onChange={e => update({ deadlineFrom: e.target.value })} style={{ ...inputStyle, marginBottom: 10 }} />
-          <SectionLabel>Koniec cyklu</SectionLabel>
+          <SectionLabel>Koniec umowy cyklicznej</SectionLabel>
           <input type="date" value={data.deadlineTo} onChange={e => update({ deadlineTo: e.target.value })} style={inputStyle} />
         </div>
       )}
@@ -2106,6 +2178,14 @@ function StepSzczegolySprzedaz({ data, update }: { data: WizardData; update: (p:
 
 // ——— STEP 7c: Szczegóły wynajmu
 function StepSzczegolyWynajem({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
+  const noticePeriodPresets = [14, 30, 60, 90];
+  const keysPresets = [1, 2, 3];
+  const tenantsPresets = [1, 2, 3, 4];
+  const petsOpts: { value: WizardData["rentalPets"]; label: string; icon: string }[] = [
+    { value: "not_allowed", label: "Niedozwolone", icon: "🚫" },
+    { value: "allowed", label: "Dozwolone", icon: "🐾" },
+    { value: "allowed_deposit", label: "Za kaucją", icon: "💰" },
+  ];
   return (
     <div>
       <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Szczegóły wynajmu</h2>
@@ -2127,9 +2207,60 @@ function StepSzczegolyWynajem({ data, update }: { data: WizardData; update: (p: 
         <textarea value={data.rentalReturnNotes} onChange={e => update({ rentalReturnNotes: e.target.value })} placeholder="Opisz oczekiwany stan przy zwrocie..." style={textareaStyle} />
       </div>
 
+      {/* Lokatorzy i klucze */}
       <div style={sectionCard}>
+        <SectionLabel>Liczba lokatorów</SectionLabel>
+        <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+          {tenantsPresets.map(n => (
+            <div key={n} onClick={() => update({ rentalTenants: n })} style={{ flex: 1, textAlign: "center", padding: "8px 4px", borderRadius: 10, border: `1.5px solid ${data.rentalTenants === n ? "var(--color-primary)" : "var(--color-border)"}`, background: data.rentalTenants === n ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", cursor: "pointer", color: data.rentalTenants === n ? "var(--color-primary)" : "var(--color-foreground)", fontWeight: data.rentalTenants === n ? 700 : 400, fontSize: 14 }}>{n}</div>
+          ))}
+          <input type="number" value={data.rentalTenants > 4 ? data.rentalTenants : ""} onChange={e => update({ rentalTenants: parseInt(e.target.value) || 1 })} placeholder="5+" style={{ ...inputStyle, flex: 1, textAlign: "center", padding: "8px 4px", marginBottom: 0 }} min={1} />
+        </div>
+        <SectionLabel>Liczba kompletów kluczy</SectionLabel>
+        <div style={{ display: "flex", gap: 6 }}>
+          {keysPresets.map(n => (
+            <div key={n} onClick={() => update({ rentalKeys: n })} style={{ flex: 1, textAlign: "center", padding: "8px 4px", borderRadius: 10, border: `1.5px solid ${data.rentalKeys === n ? "var(--color-primary)" : "var(--color-border)"}`, background: data.rentalKeys === n ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", cursor: "pointer", color: data.rentalKeys === n ? "var(--color-primary)" : "var(--color-foreground)", fontWeight: data.rentalKeys === n ? 700 : 400, fontSize: 14 }}>{n}</div>
+          ))}
+          <input type="number" value={data.rentalKeys > 3 ? data.rentalKeys : ""} onChange={e => update({ rentalKeys: parseInt(e.target.value) || 1 })} placeholder="4+" style={{ ...inputStyle, flex: 1, textAlign: "center", padding: "8px 4px", marginBottom: 0 }} min={1} />
+        </div>
+      </div>
+
+      {/* Zwierzęta */}
+      <div style={sectionCard}>
+        <SectionLabel>Zwierzęta domowe</SectionLabel>
+        <div style={{ display: "flex", gap: 8 }}>
+          {petsOpts.map(o => {
+            const active = data.rentalPets === o.value;
+            return (
+              <div key={o.value} onClick={() => update({ rentalPets: active ? "" : o.value })} style={{ flex: 1, textAlign: "center", padding: "10px 6px", borderRadius: 10, border: `1.5px solid ${active ? "var(--color-primary)" : "var(--color-border)"}`, background: active ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", cursor: "pointer" }}>
+                <div style={{ fontSize: 18, marginBottom: 3 }}>{o.icon}</div>
+                <div style={{ color: active ? "var(--color-primary)" : "var(--color-foreground)", fontSize: 12, fontWeight: active ? 700 : 400 }}>{o.label}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Wyposażenie */}
+      <div style={sectionCard}>
+        <Toggle on={data.rentalFurnitured} onChange={v => update({ rentalFurnitured: v })} label="Mieszkanie umeblowane" />
+        <div style={{ marginTop: 10 }} />
+        <Toggle on={data.rentalParking} onChange={v => update({ rentalParking: v })} label="Miejsce parkingowe wliczone w czynsz" />
+        <div style={{ marginTop: 10 }} />
         <Toggle on={data.rentalDamageLiability} onChange={v => update({ rentalDamageLiability: v })} label="Najemca odpowiada za szkody ponad normalne zużycie" />
+        <div style={{ marginTop: 10 }} />
         <Toggle on={data.rentalProtocol} onChange={v => update({ rentalProtocol: v })} label="Wymagany protokół zdawczo-odbiorczy" />
+      </div>
+
+      {/* Wypowiedzenie */}
+      <div style={sectionCard}>
+        <SectionLabel>Okres wypowiedzenia (dni)</SectionLabel>
+        <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+          {noticePeriodPresets.map(d => (
+            <div key={d} onClick={() => update({ rentalNoticePeriod: d })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 13, fontWeight: data.rentalNoticePeriod === d ? 700 : 400, border: `1.5px solid ${data.rentalNoticePeriod === d ? "var(--color-primary)" : "var(--color-border)"}`, background: data.rentalNoticePeriod === d ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.rentalNoticePeriod === d ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>{d} dni</div>
+          ))}
+        </div>
+        <input type="number" value={data.rentalNoticePeriod || ""} onChange={e => update({ rentalNoticePeriod: parseInt(e.target.value) || 0 })} placeholder="np. 30" style={inputStyle} min={0} />
       </div>
     </div>
   );
@@ -2903,6 +3034,7 @@ function InvitationScreen({ data, contractId, totalPrice, onContinue }: {
 
 // ——— CONTRACT DOCUMENT OVERLAY
 function ContractDocument({ data, contractId, onClose }: { data: WizardData; contractId: string; onClose: () => void }) {
+  const [copiedDoc, setCopiedDoc] = useState(false);
   const totalPrice = calcTotal(data);
   const category = (CATEGORY_LABELS as Record<string, string>)[data.category] ?? data.category;
   const clientLabel = data.category === "wynajem" ? "Najemca" : data.category === "sprzedaz" ? "Kupujący" : "Zleceniodawca";
@@ -3002,6 +3134,59 @@ function ContractDocument({ data, contractId, onClose }: { data: WizardData; con
         >
           📤 Udostępnij dokument
         </button>
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <button
+            onClick={() => window.print()}
+            style={{ ...btnSecondary, flex: 1, padding: "11px", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+          >
+            🖨 Drukuj
+          </button>
+          <button
+            onClick={async () => {
+              const pricingLabelMap: Record<string,string> = { fixed:"Ryczałt", hourly:"Stawka godzinowa", unit:"Za sztukę", stages:"Etapami", per_day:"Za dzień", per_week:"Za tydzień", per_month:"Za miesiąc", m2:"Za m²", materials_labor:"Materiały + robocizna" };
+              const lines = [
+                `UMOWA NR #${contractId}`,
+                `z dnia ${today}`,
+                "",
+                `§1. STRONY UMOWY`,
+                `${clientLabel}: ${data.client.name || data.inviteContact || "—"}`,
+                `${contractorLabel}: ${data.contractor.name || "—"}`,
+                "",
+                `§2. PRZEDMIOT UMOWY`,
+                `Kategoria: ${category}${data.subcategory ? ` › ${data.subcategory}` : ""}`,
+                data.scopeDescription ? `Opis: ${data.scopeDescription}` : "",
+                "",
+                `§3. WYNAGRODZENIE`,
+                `Model rozliczenia: ${pricingLabelMap[data.pricingMethod] ?? data.pricingMethod}`,
+                `Kwota łączna: ${totalPrice.toLocaleString("pl-PL")} ${data.currency}`,
+                data.rentalDeposit > 0 ? `Kaucja: ${data.rentalDeposit.toLocaleString("pl-PL")} ${data.currency}` : "",
+                "",
+                `§4. TERMIN`,
+                data.deadlineSingle ? `Data realizacji: ${data.deadlineSingle}` : "",
+                data.deadlineFrom ? `Od: ${data.deadlineFrom}` : "",
+                data.deadlineTo ? `Do: ${data.deadlineTo}` : "",
+                data.deadlineType === "tbd" ? "Termin do uzgodnienia przez strony." : "",
+                "",
+                `§5. WARUNKI`,
+                data.warranty ? `Gwarancja: ${data.warrantyDays} dni` : "",
+                data.latePenalty ? `Kara za opóźnienie: ${data.latePenaltyAmount} ${data.currency}/dzień` : "",
+                "",
+                `§6. PROTOKÓŁ ODBIORU`,
+                "Wymagany protokół odbioru przed zwolnieniem środków z depozytu.",
+                data.protocolDesc ? `Uwagi: ${data.protocolDesc}` : "",
+                "",
+                `Podpis ${clientLabel}: ___________`,
+                `Podpis ${contractorLabel}: ___________`,
+              ].filter(l => l !== "").join("\n");
+              await navigator.clipboard.writeText(lines);
+              setCopiedDoc(true);
+              setTimeout(() => setCopiedDoc(false), 2000);
+            }}
+            style={{ ...btnSecondary, flex: 1, padding: "11px", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: copiedDoc ? "color-mix(in srgb, #16a34a 10%, transparent)" : undefined, borderColor: copiedDoc ? "#16a34a" : undefined, color: copiedDoc ? "#16a34a" : undefined }}
+          >
+            {copiedDoc ? "✓ Skopiowano!" : "📋 Kopiuj tekst"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -3180,13 +3365,26 @@ function ContractLifecycle({
   const otherLabel = isClient ? contractorLabel : clientLabel;
   const invited = data.inviteContact || otherParty.email || otherParty.phone || otherLabel;
 
-  const PHASES: { id: ContractPhase; icon: string; label: string; who: string; desc: string }[] = [
-    { id: "awaiting_counterparty", icon: "✍️", label: "Akceptacja umowy", who: contractorLabel, desc: `${contractorLabel} przegląda i podpisuje umowę` },
-    { id: "awaiting_deposit",      icon: "💳", label: "Wpłata na escrow",  who: clientLabel,     desc: `${clientLabel} wpłaca środki — zablokowane do odbioru` },
-    { id: "in_progress",           icon: "🔨", label: "Realizacja",        who: contractorLabel, desc: `${contractorLabel} realizuje zlecenie` },
-    { id: "awaiting_release",      icon: "📋", label: "Zgłoszenie wykonania", who: contractorLabel, desc: `${contractorLabel} wysyła potwierdzenie wykonania` },
-    { id: "completed",             icon: "🔓", label: "Odblokowanie środków", who: clientLabel,  desc: `${clientLabel} zatwierdza odbiór → środki trafiają do ${contractorLabel.toLowerCase()}a` },
-  ];
+  const PHASES: { id: ContractPhase; icon: string; label: string; who: string; desc: string }[] =
+    data.category === "wynajem" ? [
+      { id: "awaiting_counterparty", icon: "✍️", label: "Podpisanie umowy najmu",            who: contractorLabel, desc: `${contractorLabel} przegląda i podpisuje umowę najmu` },
+      { id: "awaiting_deposit",      icon: "💳", label: "Wpłata kaucji i pierwszego czynszu", who: clientLabel,     desc: `${clientLabel} wpłaca kaucję — zabezpieczona do końca najmu` },
+      { id: "in_progress",           icon: "🏠", label: "Najem aktywny",                      who: clientLabel,     desc: `Najem trwa zgodnie z warunkami umowy` },
+      { id: "awaiting_release",      icon: "📋", label: "Zgłoszenie zakończenia najmu",        who: clientLabel,     desc: `${clientLabel} zgłasza zakończenie i zdaje lokal` },
+      { id: "completed",             icon: "🔑", label: "Protokół wyjściowy i zwrot kaucji",   who: contractorLabel, desc: `${contractorLabel} zatwierdza stan lokalu → kaucja zwrócona lub zatrzymana` },
+    ] : data.category === "sprzedaz" ? [
+      { id: "awaiting_counterparty", icon: "✍️", label: "Podpisanie umowy",         who: contractorLabel, desc: `${contractorLabel} przegląda i akceptuje warunki` },
+      { id: "awaiting_deposit",      icon: "💳", label: "Wpłata ceny sprzedaży",    who: clientLabel,     desc: `${clientLabel} wpłaca uzgodnioną kwotę` },
+      { id: "in_progress",           icon: "📦", label: "Przekazanie przedmiotu",   who: contractorLabel, desc: `${contractorLabel} przygotowuje i przekazuje przedmiot kupującemu` },
+      { id: "awaiting_release",      icon: "📋", label: "Odbiór przez kupującego",  who: clientLabel,     desc: `${clientLabel} odbiera i sprawdza przedmiot` },
+      { id: "completed",             icon: "🔓", label: "Transakcja zakończona",    who: contractorLabel, desc: `Środki przekazane — własność przeszła na ${clientLabel.toLowerCase()}` },
+    ] : [
+      { id: "awaiting_counterparty", icon: "✍️", label: "Akceptacja umowy",        who: contractorLabel, desc: `${contractorLabel} przegląda i podpisuje umowę` },
+      { id: "awaiting_deposit",      icon: "💳", label: "Wpłata na escrow",         who: clientLabel,     desc: `${clientLabel} wpłaca środki — zablokowane do odbioru` },
+      { id: "in_progress",           icon: "🔨", label: "Realizacja",               who: contractorLabel, desc: `${contractorLabel} realizuje zlecenie` },
+      { id: "awaiting_release",      icon: "📋", label: "Zgłoszenie wykonania",     who: contractorLabel, desc: `${contractorLabel} wysyła potwierdzenie wykonania` },
+      { id: "completed",             icon: "🔓", label: "Odblokowanie środków",     who: clientLabel,     desc: `${clientLabel} zatwierdza odbiór → środki trafiają do ${contractorLabel.toLowerCase()}a` },
+    ];
 
   const phaseOrder = ["awaiting_counterparty", "awaiting_deposit", "in_progress", "awaiting_release", "completed"];
   const currentIdx = phaseOrder.indexOf(phase);
@@ -3208,12 +3406,22 @@ function ContractLifecycle({
 
   const cta = getCTA();
   const isFinished = phase === "completed";
-  const phaseTip: Record<string, string> = {
+  const phaseTip: Record<string, string> = data.category === "wynajem" ? {
+    awaiting_deposit: "Kaucja jest zabezpieczona i zostanie zwrócona po zakończeniu najmu, jeżeli lokal będzie bez uszkodzeń.",
+    in_progress: "Najem aktywny. Po zakończeniu umowy zgłoś zdanie lokalu.",
+    awaiting_release: "Sprawdź stan lokalu przed zatwierdzeniem odbioru. Masz zastrzeżenia? Możesz zgłosić problem.",
+  } : data.category === "sprzedaz" ? {
+    awaiting_deposit: "Środki są zabezpieczone. Sprzedający je otrzyma po przekazaniu i zatwierdzeniu odbioru przedmiotu.",
+    in_progress: "Sprzedający przygotowuje i przekazuje przedmiot. Otrzymasz powiadomienie gdy zgłosi gotowość.",
+    awaiting_release: "Odbierz i sprawdź przedmiot. Masz zastrzeżenia? Możesz poprosić o wyjaśnienie lub zgłosić problem.",
+  } : {
     awaiting_deposit: "Środki trafiają na zabezpieczony rachunek escrow. Wykonawca nie otrzyma ich dopóki nie zatwierdzisz odbioru.",
     in_progress: "Prace w toku. Otrzymasz powiadomienie gdy wykonawca zgłosi ukończenie.",
     awaiting_release: "Sprawdź wykonaną pracę przed zatwierdzeniem. Masz zastrzeżenia? Możesz poprosić o poprawki.",
   };
   const currentTip = phaseTip[phase];
+  const finishedTitle = data.category === "wynajem" ? "Najem zakończony!" : data.category === "sprzedaz" ? "Transakcja zakończona!" : "Zlecenie zakończone!";
+  const finishedDesc = data.category === "wynajem" ? `Najem dobiegł końca. Kaucja rozliczona przez ${contractorLabel.toLowerCase()}.` : data.category === "sprzedaz" ? `Transakcja sfinalizowana. Środki przekazane ${contractorLabel.toLowerCase()}cy.` : `Środki zostały odblokowane i przekazane ${contractorLabel.toLowerCase()}cy.`;
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--color-background)", maxWidth: "min(560px, 100vw)", margin: "0 auto", padding: "20px 16px 40px", boxSizing: "border-box" }}>
@@ -3222,10 +3430,10 @@ function ContractLifecycle({
       <div style={{ marginBottom: 16 }}>
         {isFinished ? (
           <>
-            <div style={{ fontSize: 48, marginBottom: 10, textAlign: "center" }}>🎉</div>
-            <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 6, textAlign: "center" }}>Zlecenie zakończone!</h2>
+            <div style={{ fontSize: 48, marginBottom: 10, textAlign: "center" }}>{data.category === "wynajem" ? "🏠" : data.category === "sprzedaz" ? "🤝" : "🎉"}</div>
+            <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 6, textAlign: "center" }}>{finishedTitle}</h2>
             <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, textAlign: "center", lineHeight: 1.6 }}>
-              Środki zostały odblokowane i przekazane {contractorLabel.toLowerCase()}cy.
+              {finishedDesc}
             </p>
           </>
         ) : (
