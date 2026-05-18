@@ -28,6 +28,7 @@ interface PaymentStage {
   id: string;
   name: string;
   amount: number;
+  deadline?: string;
 }
 
 interface Room {
@@ -134,6 +135,9 @@ interface WizardData {
   rentalPets: "" | "allowed" | "not_allowed" | "allowed_deposit";
   rentalKeys: number;
   rentalParking: boolean;
+  rentalUtilities: "" | "included" | "tenant" | "split";
+  rentalSubletting: boolean;
+  rentalDepositReturnDays: number;
   cyclicInterval: number;
   cyclicUnit: "days" | "weeks" | "months";
   additionalItems: AdditionalItem[];
@@ -182,6 +186,7 @@ const INITIAL: WizardData = {
   paymentStages: [], rooms: [], vehicle: {}, electronics: {},
   rentalFrom: "", rentalTo: "", rentalDeposit: 0, rentalReturnNotes: "", rentalDamageLiability: false,
   rentalNoticePeriod: 30, rentalTenants: 1, rentalFurnitured: false, rentalPets: "", rentalKeys: 1, rentalParking: false,
+  rentalUtilities: "", rentalSubletting: false, rentalDepositReturnDays: 30,
   cyclicInterval: 1, cyclicUnit: "months",
   additionalItems: [],
   paymentMethod: "", depositCovers: [],
@@ -356,7 +361,12 @@ function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContr
       c.contractId.toLowerCase().includes(q) ||
       (c.data.inviteContact || "").toLowerCase().includes(q) ||
       (c.data.subcategory || "").toLowerCase().includes(q) ||
-      (CAT_LABELS[c.data.category] || "").toLowerCase().includes(q);
+      (CAT_LABELS[c.data.category] || "").toLowerCase().includes(q) ||
+      (c.data.customTitle || "").toLowerCase().includes(q) ||
+      (c.data.scopeDescription || "").toLowerCase().includes(q) ||
+      (c.data.saleItems || []).some(i => (i.name || "").toLowerCase().includes(q)) ||
+      (c.data.client.name || "").toLowerCase().includes(q) ||
+      (c.data.contractor.name || "").toLowerCase().includes(q);
     const matchFilter =
       filter === "all" ? true :
       filter === "active" ? (c.phase !== "completed") :
@@ -552,6 +562,15 @@ function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContr
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 20, background: "color-mix(in srgb, #f59e0b 12%, transparent)", border: "1px solid color-mix(in srgb, #f59e0b 30%, transparent)" }}>
                       <span style={{ color: "#f59e0b", fontSize: 11, fontWeight: 700 }}>⏰ Termin wkrótce</span>
                     </div>
+                  )}
+                  {badge === "overdue" && otherName && (
+                    <a
+                      href={otherName.includes("@") ? `mailto:${otherName}` : `tel:${otherName}`}
+                      onClick={e => e.stopPropagation()}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 4, color: "#dc2626", fontSize: 11, fontWeight: 700, textDecoration: "none" }}
+                    >
+                      📞 Skontaktuj się z {otherRole.toLowerCase()}
+                    </a>
                   )}
                 </div>
               </div>
@@ -1804,6 +1823,36 @@ function StepTermin({ data, update }: { data: WizardData; update: (p: Partial<Wi
           <input type="date" value={data.deadlineTo} onChange={e => update({ deadlineTo: e.target.value })} style={inputStyle} />
         </div>
       )}
+      {data.deadlineType === "stages" && (
+        <div style={sectionCard}>
+          {data.paymentStages.length === 0 ? (
+            <div style={{ color: "var(--color-muted-foreground)", fontSize: 13 }}>
+              Etapy definiujesz w kroku "Wycena". Wróć tam, żeby dodać etapy, a następnie przypisz tu daty.
+            </div>
+          ) : (
+            <>
+              <SectionLabel>Terminy realizacji etapów</SectionLabel>
+              {data.paymentStages.map((stage, i) => (
+                <div key={stage.id} style={{ marginBottom: 12 }}>
+                  <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, marginBottom: 4 }}>
+                    Etap {i + 1}{stage.name ? `: ${stage.name}` : ""}
+                  </div>
+                  <input
+                    type="date"
+                    value={stage.deadline || ""}
+                    onChange={e => {
+                      const updated = [...data.paymentStages];
+                      updated[i] = { ...updated[i], deadline: e.target.value };
+                      update({ paymentStages: updated });
+                    }}
+                    style={inputStyle}
+                  />
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
       {data.deadlineType === "tbd" && (
         <div style={{ ...sectionCard, background: "rgba(245,158,11,0.08)", border: "1px solid #f59e0b" }}>
           <div style={{ color: "#f59e0b", fontSize: 13, fontWeight: 600 }}>Termin zostanie ustalony odrębnie przez strony.</div>
@@ -2320,6 +2369,40 @@ function StepSzczegolyWynajem({ data, update }: { data: WizardData; update: (p: 
           ))}
         </div>
         <input type="number" value={data.rentalNoticePeriod || ""} onChange={e => update({ rentalNoticePeriod: parseInt(e.target.value) || 0 })} placeholder="np. 30" style={inputStyle} min={0} />
+      </div>
+
+      {/* Media i podnajem */}
+      <div style={sectionCard}>
+        <SectionLabel>Media i koszty eksploatacyjne</SectionLabel>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
+          {([
+            { v: "included", l: "Wliczone w czynsz" },
+            { v: "tenant", l: "Płaci najemca" },
+            { v: "split", l: "Podział 50/50" },
+          ] as const).map(o => {
+            const active = data.rentalUtilities === o.v;
+            return (
+              <div key={o.v} onClick={() => update({ rentalUtilities: active ? "" : o.v })}
+                style={{ padding: "8px 12px", borderRadius: 10, border: `1.5px solid ${active ? "var(--color-primary)" : "var(--color-border)"}`, background: active ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", cursor: "pointer", fontSize: 13, color: active ? "var(--color-primary)" : "var(--color-foreground)", fontWeight: active ? 700 : 400 }}>
+                {o.l}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ marginTop: 14 }}>
+          <Toggle on={data.rentalSubletting} onChange={v => update({ rentalSubletting: v })} label="Podnajem dozwolony" />
+        </div>
+      </div>
+
+      {/* Zwrot kaucji */}
+      <div style={sectionCard}>
+        <SectionLabel>Termin zwrotu kaucji (dni od zdania lokalu)</SectionLabel>
+        <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+          {[14, 21, 30, 60].map(d => (
+            <div key={d} onClick={() => update({ rentalDepositReturnDays: d })} style={pillStyle(data.rentalDepositReturnDays === d)}>{d} dni</div>
+          ))}
+        </div>
+        <input type="number" value={data.rentalDepositReturnDays || ""} onChange={e => update({ rentalDepositReturnDays: parseInt(e.target.value) || 30 })} placeholder="np. 30" style={inputStyle} min={1} />
       </div>
     </div>
   );
@@ -3194,6 +3277,28 @@ function ContractDocument({ data, contractId, onClose }: { data: WizardData; con
                 {data.category === "wynajem" && data.rentalKeys > 0 && <p><b>Liczba kluczy:</b> {data.rentalKeys} kpl.</p>}
                 {data.category === "wynajem" && data.rentalNoticePeriod > 0 && <p><b>Okres wypowiedzenia:</b> {data.rentalNoticePeriod} dni</p>}
                 {data.category === "wynajem" && data.rentalConditionBefore && <p><b>Stan przy wydaniu:</b> {data.rentalConditionBefore.slice(0, 120)}{data.rentalConditionBefore.length > 120 ? "…" : ""}</p>}
+                {data.category === "wynajem" && data.rentalUtilities && <p><b>Media:</b> {({ included: "Wliczone w czynsz", tenant: "Płaci najemca", split: "Podział 50/50" } as Record<string,string>)[data.rentalUtilities]}</p>}
+                {data.category === "wynajem" && <p><b>Podnajem:</b> {data.rentalSubletting ? "Dozwolony" : "Niedozwolony"}</p>}
+                {data.category === "wynajem" && data.rentalDepositReturnDays > 0 && <p><b>Zwrot kaucji:</b> do {data.rentalDepositReturnDays} dni od zdania lokalu</p>}
+                {data.category === "sprzedaz" && data.subcategory === "Auto/pojazd" && data.vehicle && (data.vehicle.fuel || data.vehicle.gearbox || data.vehicle.hasServiceBook !== undefined) && (
+                  <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid var(--color-border)" }}>
+                    {data.vehicle.fuel && <p><b>Paliwo:</b> {data.vehicle.fuel}</p>}
+                    {data.vehicle.gearbox && <p><b>Skrzynia biegów:</b> {data.vehicle.gearbox}</p>}
+                    {data.vehicle.mileage && <p><b>Przebieg:</b> {data.vehicle.mileage} km</p>}
+                    <p><b>Dwa kluczyki:</b> {data.vehicle.hasTwoKeys ? "Tak" : "Nie"}</p>
+                    <p><b>Książka serwisowa:</b> {data.vehicle.hasServiceBook ? "Tak" : "Nie"}</p>
+                    <p><b>OC opłacone:</b> {data.vehicle.hasOC ? "Tak" : "Nie"}</p>
+                    <p><b>Brak wypadków:</b> {data.vehicle.noAccidents ? "Tak" : "Nie"}</p>
+                    <p><b>Brak zastawów:</b> {data.vehicle.noPledge ? "Tak" : "Nie"}</p>
+                  </div>
+                )}
+                {data.category === "sprzedaz" && data.electronics?.imei && (
+                  <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid var(--color-border)" }}>
+                    <p><b>IMEI:</b> {data.electronics.imei}</p>
+                    {(data.electronics.batteryPct || 0) > 0 && <p><b>Stan baterii:</b> {data.electronics.batteryPct}%</p>}
+                    <p><b>Blokada konta (iCloud/Google):</b> {data.electronics.icloudLock ? "Tak — wymaga odblokowania" : "Nie"}</p>
+                  </div>
+                )}
               </div>
             )},
             { par: "§3. WYNAGRODZENIE", content: (
@@ -3215,6 +3320,9 @@ function ContractDocument({ data, contractId, onClose }: { data: WizardData; con
                 {data.rentalFrom && <p><b>Data wydania:</b> {data.rentalFrom}</p>}
                 {data.rentalTo && <p><b>Data zwrotu:</b> {data.rentalTo}</p>}
                 {data.deadlineType === "tbd" && <p>Termin do uzgodnienia przez strony.</p>}
+                {data.deadlineType === "stages" && data.paymentStages.some(s => s.deadline) && data.paymentStages.map((s, i) => s.deadline ? (
+                  <p key={s.id}><b>Etap {i + 1}{s.name ? ` (${s.name})` : ""}:</b> do {s.deadline}</p>
+                ) : null)}
               </div>
             )},
             { par: "§5. WARUNKI", content: (
@@ -3411,6 +3519,10 @@ function ContractLifecycle({
   const [disputeOpen, setDisputeOpen] = useState(false);
   const [disputeConfirm, setDisputeConfirm] = useState<"fixes" | "mediation" | "cancel" | null>(null);
   const [disputeNote, setDisputeNote] = useState("");
+  const [showProtocol, setShowProtocol] = useState(false);
+  const [protocolStatus, setProtocolStatus] = useState<"" | "accepted" | "with_notes" | "needs_fixes" | "rejected">("");
+  const [protocolDesc, setProtocolDesc] = useState("");
+  const [protocolPhotos, setProtocolPhotos] = useState(false);
   const [paymentSentAt, setPaymentSentAt] = useState<string | null>(() => {
     try { return loadContracts().find(c => c.contractId === contractId)?.paymentSentAt || null; } catch { return null; }
   });
@@ -3538,7 +3650,7 @@ function ContractLifecycle({
         : data.category === "sprzedaz"
         ? "🔓 Potwierdź odbiór przedmiotu"
         : "🔓 Potwierdź odbiór i odblokuj środki";
-      return { label: releaseLabel, action: () => setPhase("completed"), color: "#16a34a" };
+      return { label: showProtocol ? "↑ Zwiń protokół" : releaseLabel, action: () => setShowProtocol(v => !v), color: showProtocol ? undefined : "#16a34a" };
     }
     return null;
   };
@@ -3860,6 +3972,80 @@ function ContractLifecycle({
         >
           {cta.label}
         </button>
+      )}
+
+      {/* Inline protocol panel — shown when client clicks CTA in awaiting_release */}
+      {showProtocol && phase === "awaiting_release" && isClient && (
+        <div style={{ ...sectionCard, border: "1.5px solid var(--color-primary)", marginBottom: 12 }}>
+          <div style={{ color: "var(--color-foreground)", fontSize: 15, fontWeight: 700, marginBottom: 12 }}>
+            {data.category === "wynajem" ? "📋 Protokół wyjściowy" : "📋 Protokół odbioru"}
+          </div>
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, marginBottom: 10 }}>
+            {data.category === "wynajem" ? "STAN LOKALU PRZY ZWROCIE" : "STATUS ODBIORU"}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
+            {(data.category === "wynajem" ? [
+              { v: "accepted" as const, l: "Lokal oddany bez zastrzeżeń", c: "#22c55e" },
+              { v: "with_notes" as const, l: "Drobne uwagi — do uzgodnienia", c: "#f59e0b" },
+              { v: "needs_fixes" as const, l: "Usterki do rozliczenia", c: "#ef4444" },
+              { v: "rejected" as const, l: "Poważne zastrzeżenia — spór", c: "#6b7280" },
+            ] : data.category === "sprzedaz" ? [
+              { v: "accepted" as const, l: "Odebrano bez zastrzeżeń", c: "#22c55e" },
+              { v: "with_notes" as const, l: "Odebrano z uwagami", c: "#f59e0b" },
+              { v: "rejected" as const, l: "Odmowa przyjęcia — spór", c: "#6b7280" },
+            ] : [
+              { v: "accepted" as const, l: "Odebrane bez uwag", c: "#22c55e" },
+              { v: "with_notes" as const, l: "Odebrane z uwagami", c: "#f59e0b" },
+              { v: "needs_fixes" as const, l: "Wymaga poprawek", c: "#ef4444" },
+              { v: "rejected" as const, l: "Odrzucone", c: "#6b7280" },
+            ]).map(opt => {
+              const active = protocolStatus === opt.v;
+              return (
+                <div key={opt.v} onClick={() => setProtocolStatus(opt.v)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, border: `1.5px solid ${active ? opt.c : "var(--color-border)"}`, background: active ? `color-mix(in srgb, ${opt.c} 10%, transparent)` : "var(--color-card)", cursor: "pointer" }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 5, background: opt.c, flexShrink: 0 }} />
+                  <span style={{ flex: 1, color: active ? "var(--color-foreground)" : "var(--color-muted-foreground)", fontSize: 14, fontWeight: active ? 700 : 400 }}>{opt.l}</span>
+                  <div style={{ width: 18, height: 18, borderRadius: 9, border: `2px solid ${active ? opt.c : "var(--color-border)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {active && <div style={{ width: 8, height: 8, borderRadius: 4, background: opt.c }} />}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+              {data.category === "wynajem" ? "Uwagi do stanu lokalu" : "Opis odbioru"}
+            </div>
+            <textarea
+              value={protocolDesc}
+              onChange={e => setProtocolDesc(e.target.value)}
+              placeholder={data.category === "wynajem" ? "Opisz stan lokalu przy zwrocie..." : "Opisz odbiór (opcjonalnie)..."}
+              style={{ ...textareaStyle, minHeight: 72 }}
+            />
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <Toggle on={protocolPhotos} onChange={setProtocolPhotos} label="Zdjęcia dokumentacyjne wykonane" />
+          </div>
+          <button
+            disabled={!protocolStatus}
+            onClick={() => {
+              if (!protocolStatus) return;
+              addContractEvent(contractId, {
+                type: "phase_change",
+                icon: protocolStatus === "accepted" ? "✅" : protocolStatus === "rejected" ? "❌" : "📋",
+                label: `Protokół odbioru: ${({ accepted: "bez zastrzeżeń", with_notes: "z uwagami", needs_fixes: "wymaga poprawek", rejected: "odrzucony" } as Record<string,string>)[protocolStatus]}${protocolDesc ? ` — ${protocolDesc.slice(0, 60)}` : ""}`,
+              });
+              setShowProtocol(false);
+              if (protocolStatus === "rejected" || protocolStatus === "needs_fixes") {
+                setDisputeOpen(true);
+              } else {
+                setPhase("completed");
+              }
+            }}
+            style={{ ...btnPrimary, width: "100%", padding: "13px", fontSize: 15, background: !protocolStatus ? "var(--color-border)" : protocolStatus === "accepted" ? "#16a34a" : "var(--color-primary)", cursor: protocolStatus ? "pointer" : "not-allowed" }}
+          >
+            {!protocolStatus ? "Wybierz status odbioru" : protocolStatus === "accepted" || protocolStatus === "with_notes" ? "✓ Zatwierdź i zakończ umowę" : "Zgłoś problem i otwórz spór"}
+          </button>
+        </div>
       )}
 
       {/* Waiting message when it's not your turn */}
