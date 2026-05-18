@@ -503,14 +503,28 @@ function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContr
           </div>
           {visible.map(c => {
             const badge = deadlineBadge(c);
+            const catIcon: Record<string,string> = { usluga:"🛠️", remont:"🔨", sprzedaz:"🛍️", wynajem:"🏠", wlasna:"📝", pozyczka:"💰" };
+            const otherRole = c.data.myRole === "client"
+              ? (c.data.category === "wynajem" ? "Wynajmujący" : c.data.category === "sprzedaz" ? "Sprzedający" : "Wykonawca")
+              : (c.data.category === "wynajem" ? "Najemca" : c.data.category === "sprzedaz" ? "Kupujący" : "Zamawiający");
+            const otherName = c.data.myRole === "client"
+              ? (c.data.contractor.name || c.data.inviteContact || "")
+              : (c.data.client.name || c.data.inviteContact || "");
             return (
               <div key={c.id} onClick={() => onOpenContract(c)} style={{ background: "var(--color-card)", border: `1.5px solid ${badge === "overdue" ? "#dc2626" : badge === "soon" ? "#f59e0b" : "var(--color-border)"}`, borderRadius: 14, padding: "14px 16px", marginBottom: 10, cursor: "pointer" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ color: "var(--color-foreground)", fontSize: 15, fontWeight: 700, marginBottom: 2 }}>
-                      {CAT_LABELS[c.data.category] || "Umowa"}{c.data.subcategory ? ` › ${c.data.subcategory}` : ""}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0, display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <span style={{ fontSize: 22, flexShrink: 0, lineHeight: 1, marginTop: 1 }}>{catIcon[c.data.category] || "📄"}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ color: "var(--color-foreground)", fontSize: 15, fontWeight: 700, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {c.data.customTitle || (c.data.subcategory ? `${CAT_LABELS[c.data.category] || "Umowa"} › ${c.data.subcategory}` : CAT_LABELS[c.data.category] || "Umowa")}
+                      </div>
+                      {otherName && (
+                        <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {otherRole}: <span style={{ color: "var(--color-foreground)", fontWeight: 600 }}>{otherName}</span>
+                        </div>
+                      )}
                     </div>
-                    <div style={{ color: "var(--color-muted-foreground)", fontSize: 12 }}>#{c.contractId} · {new Date(c.createdAt).toLocaleDateString("pl-PL")}</div>
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 8 }}>
                     {c.totalPrice > 0 && (
@@ -528,6 +542,7 @@ function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContr
                       <span style={{ color: PHASE_COLORS[c.phase] || "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700 }}>{PHASE_LABELS[c.phase] || c.phase}</span>
                     </div>
                   )}
+                  <span style={{ color: "var(--color-muted-foreground)", fontSize: 11 }}>#{c.contractId} · {new Date(c.createdAt).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })}</span>
                   {badge === "overdue" && (
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 20, background: "color-mix(in srgb, #dc2626 12%, transparent)", border: "1px solid color-mix(in srgb, #dc2626 30%, transparent)" }}>
                       <span style={{ color: "#dc2626", fontSize: 11, fontWeight: 700 }}>⚠ Termin minął</span>
@@ -539,9 +554,6 @@ function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContr
                     </div>
                   )}
                 </div>
-                {c.data.inviteContact && (
-                  <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, marginTop: 6 }}>Strona: {c.data.inviteContact}</div>
-                )}
               </div>
             );
           })}
