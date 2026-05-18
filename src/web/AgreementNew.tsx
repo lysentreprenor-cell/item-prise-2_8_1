@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore, type CurrencyCode } from "@/lib/store";
 
@@ -443,6 +443,29 @@ const CATEGORY_LABELS: Record<string, string> = {
   usluga: "Usługa", remont: "Remont", sprzedaz: "Sprzedaż", wynajem: "Wynajem", wlasna: "Własna",
 };
 
+// Module-level presets — defined once, not re-created on every render
+const HOUR_PRESETS = [
+  { label: "1 h", h: 1 }, { label: "2 h", h: 2 }, { label: "4 h", h: 4 },
+  { label: "8 h", h: 8 }, { label: "16 h", h: 16 }, { label: "40 h", h: 40 },
+];
+const DAY_PRESETS = [
+  { label: "3 dni", d: 3 }, { label: "1 tydz.", d: 7 },
+  { label: "2 tyg.", d: 14 }, { label: "1 mies.", d: 30 }, { label: "2 mies.", d: 60 },
+];
+const WEEK_PRESETS = [
+  { label: "1 tydz.", w: 1 }, { label: "2 tyg.", w: 2 },
+  { label: "1 mies.", w: 4 }, { label: "2 mies.", w: 8 }, { label: "3 mies.", w: 13 },
+];
+const MONTH_PRESETS = [
+  { label: "1 mies.", m: 1 }, { label: "3 mies.", m: 3 },
+  { label: "6 mies.", m: 6 }, { label: "1 rok", m: 12 }, { label: "2 lata", m: 24 },
+];
+const WARRANTY_PRESETS = [
+  { l: "30 dni", d: 30 }, { l: "90 dni", d: 90 }, { l: "6 mies.", d: 180 },
+  { l: "1 rok", d: 365 }, { l: "2 lata", d: 730 },
+];
+const PENALTY_PRESETS = [50, 100, 200, 500];
+
 const STEP_HINTS: Record<string, { icon: string; text: string }> = {
   podkategoria: { icon: "🎯", text: "Precyzyjny typ umowy = mniej sporów i lepsza ochrona." },
   strony: { icon: "🔒", text: "Dane stron są używane wyłącznie w tej umowie. Obie strony muszą je zaakceptować." },
@@ -589,46 +612,39 @@ export default function AgreementNew() {
     };
   }, []);
 
-  // Auto-save draft whenever wizard data or step changes
+  // Auto-save draft with 600ms debounce to avoid writing localStorage on every keystroke
   useEffect(() => {
     if (view === "wizard" && !contractPhase) {
-      saveDraft(data, stepIndex, contractId);
-      setDraft({ data, stepIndex });
+      const timer = setTimeout(() => {
+        saveDraft(data, stepIndex, contractId);
+        setDraft({ data, stepIndex });
+      }, 600);
+      return () => clearTimeout(timer);
     }
   }, [data, stepIndex, contractId, view, contractPhase]);
 
-  // Save completed contract when phase is set
+  // Save/update contract in localStorage whenever phase changes
   useEffect(() => {
-    if (contractPhase) {
-      const total = calcTotal(data);
+    if (!contractPhase) return;
+    const now = new Date().toISOString();
+    const existing = loadContracts();
+    const idx = existing.findIndex(c => c.contractId === contractId);
+    if (idx >= 0) {
+      existing[idx].phase = contractPhase;
+      existing[idx].updatedAt = now;
+      try { localStorage.setItem(LS_CONTRACTS_KEY, JSON.stringify(existing)); } catch {}
+    } else {
       const contract: SavedContract = {
-        id: contractId,
-        contractId,
-        data,
-        totalPrice: total,
+        id: contractId, contractId, data,
+        totalPrice: calcTotal(data),
         phase: contractPhase,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: now, updatedAt: now,
       };
       saveContract(contract);
-      clearDraft();
-      setDraft(null);
-      setSavedContracts(loadContracts());
     }
-  }, [contractPhase]);
-
-  // Update contract phase in localStorage when it changes
-  useEffect(() => {
-    if (contractPhase) {
-      const existing = loadContracts();
-      const idx = existing.findIndex(c => c.contractId === contractId);
-      if (idx >= 0) {
-        existing[idx].phase = contractPhase;
-        existing[idx].updatedAt = new Date().toISOString();
-        try { localStorage.setItem(LS_CONTRACTS_KEY, JSON.stringify(existing)); } catch {}
-        setSavedContracts([...existing]);
-      }
-    }
+    clearDraft();
+    setDraft(null);
+    setSavedContracts(loadContracts());
   }, [contractPhase]);
 
   const update = (patch: Partial<WizardData>) => setData(prev => ({ ...prev, ...patch }));
@@ -656,27 +672,40 @@ export default function AgreementNew() {
     setView("wizard");
   };
 
-  const steps = getSteps(data.category);
+  const steps = useMemo(() => getSteps(data.category), [data.category]);
   const totalSteps = steps.length;
   const currentStep = steps[stepIndex]?.id ?? "";
 
-  const additionalTotal = data.additionalItems.reduce((s, i) => s + i.qty * i.price, 0);
-  const totalPrice = calcTotal(data);
+  const additionalTotal = useMemo(
+    () => data.additionalItems.reduce((s, i) => s + i.qty * i.price, 0),
+    [data.additionalItems]
+  );
+  const totalPrice = useMemo(() => calcTotal(data), [
+    data.pricingMethod, data.basePrice, data.estimatedHours,
+    data.unitItems, data.paymentStages, data.additionalItems,
+    data.rentalDays, data.rentalWeeks, data.rentalMonths,
+    data.rentalDeposit, data.category,
+  ]);
 
-  const warnings: string[] = [];
-  if (data.category === "remont" && !data.scopeBeforePhotos) warnings.push("Brakuje zdjęć przed pracą");
-  if (data.category !== "wlasna" && !data.scopeMaterials && data.category !== "sprzedaz" && data.category !== "wynajem")
-    warnings.push("Nie ustalono kto kupuje materiały");
-  if (data.paymentMethod === "deposit" && data.depositCovers.length === 0)
-    warnings.push("Depozyt nie jest przypisany do konkretnych etapów");
-  if (data.pricingMethod && totalPrice === 0)
-    warnings.push("Kwota umowy wynosi 0 — uzupełnij wycenę");
-  if ((data.category === "wynajem") && !data.rentalDeposit)
-    warnings.push("Brak kaucji — ryzyko przy zniszczeniu mienia");
-  if (data.latePenalty && !data.latePenaltyAmount)
-    warnings.push("Włączona kara za opóźnienie, ale kwota wynosi 0");
-  if (data.warranty && !data.warrantyDays)
-    warnings.push("Włączona gwarancja, ale liczba dni wynosi 0");
+  const warnings = useMemo(() => {
+    const w: string[] = [];
+    if (data.category === "remont" && !data.scopeBeforePhotos) w.push("Brakuje zdjęć przed pracą");
+    if (data.category !== "wlasna" && !data.scopeMaterials && data.category !== "sprzedaz" && data.category !== "wynajem")
+      w.push("Nie ustalono kto kupuje materiały");
+    if (data.paymentMethod === "deposit" && data.depositCovers.length === 0)
+      w.push("Depozyt nie jest przypisany do konkretnych etapów");
+    if (data.pricingMethod && totalPrice === 0)
+      w.push("Kwota umowy wynosi 0 — uzupełnij wycenę");
+    if (data.category === "wynajem" && !data.rentalDeposit)
+      w.push("Brak kaucji — ryzyko przy zniszczeniu mienia");
+    if (data.latePenalty && !data.latePenaltyAmount)
+      w.push("Włączona kara za opóźnienie, ale kwota wynosi 0");
+    if (data.warranty && !data.warrantyDays)
+      w.push("Włączona gwarancja, ale liczba dni wynosi 0");
+    return w;
+  }, [data.category, data.scopeBeforePhotos, data.scopeMaterials, data.paymentMethod,
+      data.depositCovers, data.pricingMethod, totalPrice, data.rentalDeposit,
+      data.latePenalty, data.latePenaltyAmount, data.warranty, data.warrantyDays]);
 
   const canGoNext = () => {
     if (currentStep === "rola") return !!data.myRole;
@@ -1206,7 +1235,7 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
               style={{ ...inputStyle, fontSize: 18, fontWeight: 600, marginBottom: 10 }}
             />
             <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-              {[{ label: "1 h", h: 1 }, { label: "2 h", h: 2 }, { label: "4 h", h: 4 }, { label: "8 h", h: 8 }, { label: "16 h", h: 16 }, { label: "40 h", h: 40 }].map(s => (
+              {HOUR_PRESETS.map(s => (
                 <div key={s.h} onClick={() => update({ estimatedHours: s.h })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 13, fontWeight: data.estimatedHours === s.h ? 700 : 400, border: `1.5px solid ${data.estimatedHours === s.h ? "var(--color-primary)" : "var(--color-border)"}`, background: data.estimatedHours === s.h ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.estimatedHours === s.h ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>
                   {s.label}
                 </div>
@@ -1234,7 +1263,7 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
               style={{ ...inputStyle, fontSize: 18, fontWeight: 600, marginBottom: 10 }}
             />
             <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-              {[{ label: "3 dni", d: 3 }, { label: "1 tydz.", d: 7 }, { label: "2 tyg.", d: 14 }, { label: "1 mies.", d: 30 }, { label: "2 mies.", d: 60 }].map(s => (
+              {DAY_PRESETS.map(s => (
                 <div key={s.d} onClick={() => update({ rentalDays: s.d })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 13, fontWeight: data.rentalDays === s.d ? 700 : 400, border: `1.5px solid ${data.rentalDays === s.d ? "var(--color-primary)" : "var(--color-border)"}`, background: data.rentalDays === s.d ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.rentalDays === s.d ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>
                   {s.label}
                 </div>
@@ -1261,7 +1290,7 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
               style={{ ...inputStyle, fontSize: 18, fontWeight: 600, marginBottom: 10 }}
             />
             <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-              {[{ label: "1 tydz.", w: 1 }, { label: "2 tyg.", w: 2 }, { label: "1 mies.", w: 4 }, { label: "2 mies.", w: 8 }, { label: "3 mies.", w: 13 }].map(s => (
+              {WEEK_PRESETS.map(s => (
                 <div key={s.w} onClick={() => update({ rentalWeeks: s.w })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 13, fontWeight: data.rentalWeeks === s.w ? 700 : 400, border: `1.5px solid ${data.rentalWeeks === s.w ? "var(--color-primary)" : "var(--color-border)"}`, background: data.rentalWeeks === s.w ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.rentalWeeks === s.w ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>
                   {s.label}
                 </div>
@@ -1288,7 +1317,7 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
               style={{ ...inputStyle, fontSize: 18, fontWeight: 600, marginBottom: 10 }}
             />
             <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-              {[{ label: "1 mies.", m: 1 }, { label: "3 mies.", m: 3 }, { label: "6 mies.", m: 6 }, { label: "1 rok", m: 12 }, { label: "2 lata", m: 24 }].map(s => (
+              {MONTH_PRESETS.map(s => (
                 <div key={s.m} onClick={() => update({ rentalMonths: s.m })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 13, fontWeight: data.rentalMonths === s.m ? 700 : 400, border: `1.5px solid ${data.rentalMonths === s.m ? "var(--color-primary)" : "var(--color-border)"}`, background: data.rentalMonths === s.m ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.rentalMonths === s.m ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>
                   {s.label}
                 </div>
@@ -2096,7 +2125,7 @@ function StepWarunki({ data, update }: { data: WizardData; update: (p: Partial<W
           <div style={{ paddingTop: 8 }}>
             <SectionLabel>Okres gwarancji (dni)</SectionLabel>
             <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-              {[{ l: "30 dni", d: 30 }, { l: "90 dni", d: 90 }, { l: "6 mies.", d: 180 }, { l: "1 rok", d: 365 }, { l: "2 lata", d: 730 }].map(s => (
+              {WARRANTY_PRESETS.map(s => (
                 <div key={s.d} onClick={() => update({ warrantyDays: s.d })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: data.warrantyDays === s.d ? 700 : 400, border: `1.5px solid ${data.warrantyDays === s.d ? "var(--color-primary)" : "var(--color-border)"}`, background: data.warrantyDays === s.d ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.warrantyDays === s.d ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>{s.l}</div>
               ))}
             </div>
@@ -2108,7 +2137,7 @@ function StepWarunki({ data, update }: { data: WizardData; update: (p: Partial<W
           <div style={{ paddingTop: 8 }}>
             <SectionLabel>Kara ({data.currency}/dzień)</SectionLabel>
             <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-              {[50, 100, 200, 500].map(amt => (
+              {PENALTY_PRESETS.map(amt => (
                 <div key={amt} onClick={() => update({ latePenaltyAmount: amt })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: data.latePenaltyAmount === amt ? 700 : 400, border: `1.5px solid ${data.latePenaltyAmount === amt ? "var(--color-primary)" : "var(--color-border)"}`, background: data.latePenaltyAmount === amt ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.latePenaltyAmount === amt ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>{amt} {data.currency}</div>
               ))}
             </div>
