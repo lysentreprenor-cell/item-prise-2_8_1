@@ -667,25 +667,25 @@ function getContextualNudge(data: WizardData): { icon: string; text: string; col
 
 function getSteps(category: string) {
   const base = [
-    { id: "rola", label: "Rola" },
-    { id: "kategoria", label: "Kategoria" },
-    { id: "podkategoria", label: "Podkategoria" },
-    { id: "strony", label: "Strony" },
+    { id: "rola", label: "Moja rola" },
+    { id: "kategoria", label: "Typ umowy" },
+    { id: "podkategoria", label: "Szczegółowy typ" },
+    { id: "strony", label: "Druga strona" },
     { id: "wycena", label: "Wycena" },
     { id: "termin", label: "Termin" },
   ];
-  if (category !== "sprzedaz") base.push({ id: "zakres", label: "Zakres" });
+  if (category !== "sprzedaz") base.push({ id: "zakres", label: "Zakres prac" });
   if (category === "remont") base.push({ id: "pomieszczenia", label: "Pomieszczenia" });
-  if (category === "sprzedaz") base.push({ id: "szczegoly", label: "Szczegóły" });
-  if (category === "wynajem") base.push({ id: "szczegoly_wynajmu", label: "Wynajem" });
-  base.push({ id: "dodatki", label: "Dodatki" });
-  base.push({ id: "wycena_koncowa", label: "Podsumowanie" });
-  base.push({ id: "platnosc", label: "Płatność" });
+  if (category === "sprzedaz") base.push({ id: "szczegoly", label: "Opis przedmiotu" });
+  if (category === "wynajem") base.push({ id: "szczegoly_wynajmu", label: "Szczegóły wynajmu" });
+  base.push({ id: "dodatki", label: "Koszty dodatkowe" });
+  base.push({ id: "wycena_koncowa", label: "Wycena końcowa" });
+  base.push({ id: "platnosc", label: "Sposób płatności" });
   base.push({ id: "warunki", label: "Warunki" });
   base.push(
-    { id: "protokol", label: "Protokół" },
-    { id: "przeglad", label: "Przegląd" },
-    { id: "podpis", label: "Podpis" },
+    { id: "protokol", label: "Odbiór" },
+    { id: "przeglad", label: "Podsumowanie" },
+    { id: "podpis", label: "Podpisz" },
   );
   return base;
 }
@@ -735,7 +735,7 @@ function LiveTicker({ total, label, currency }: { total: number; label: string; 
     }
   }, [total]);
 
-  if (total === 0) return null;
+  if (total === 0) return <div style={{ height: 42, marginBottom: 8 }} />;
 
   return (
     <div style={{
@@ -911,25 +911,29 @@ export default function AgreementNew() {
       data.depositCovers, data.pricingMethod, totalPrice, data.rentalDeposit,
       data.latePenalty, data.latePenaltyAmount, data.warranty, data.warrantyDays]);
 
-  const canGoNext = () => {
-    if (currentStep === "rola") return !!data.myRole;
-    if (currentStep === "kategoria") return !!data.category && data.category !== "pozyczka";
-    if (currentStep === "podkategoria") return !!data.subcategory;
-    if (currentStep === "strony") return !!data.inviteContact;
-    if (currentStep === "wycena") return !!data.pricingMethod && (
-      data.pricingMethod === "stages" ? data.paymentStages.length > 0 :
-      data.pricingMethod === "unit" ? data.unitItems.length > 0 :
-      data.basePrice > 0
-    );
-    if (currentStep === "termin") return (
-      data.deadlineType === "tbd" ||
-      (data.deadlineType === "single" && !!data.deadlineSingle) ||
-      ((data.deadlineType === "range" || data.deadlineType === "cyclic") && !!data.deadlineFrom && !!data.deadlineTo) ||
-      data.deadlineType === "stages"
-    );
-    if (currentStep === "protokol") return !!data.protocolStatus;
-    return true;
+  const getNextBlockReason = (): string | null => {
+    if (currentStep === "rola" && !data.myRole) return "Wybierz swoją rolę w umowie";
+    if (currentStep === "kategoria") {
+      if (!data.category) return "Wybierz typ umowy";
+      if (data.category === "pozyczka") return "Pożyczki nie są jeszcze obsługiwane";
+    }
+    if (currentStep === "podkategoria" && !data.subcategory) return "Wybierz podkategorię";
+    if (currentStep === "strony" && !data.inviteContact) return "Podaj e-mail lub telefon drugiej strony";
+    if (currentStep === "wycena") {
+      if (!data.pricingMethod) return "Wybierz sposób wyceny";
+      if (data.pricingMethod === "stages" && data.paymentStages.length === 0) return "Dodaj co najmniej jeden etap płatności";
+      if (data.pricingMethod === "unit" && data.unitItems.length === 0) return "Dodaj co najmniej jedną pozycję";
+      if (data.pricingMethod !== "stages" && data.pricingMethod !== "unit" && data.basePrice <= 0) return "Wpisz kwotę";
+    }
+    if (currentStep === "termin") {
+      if (data.deadlineType === "single" && !data.deadlineSingle) return "Wybierz datę realizacji";
+      if ((data.deadlineType === "range" || data.deadlineType === "cyclic") && (!data.deadlineFrom || !data.deadlineTo)) return "Podaj datę od i datę do";
+    }
+    if (currentStep === "protokol" && !data.protocolStatus) return "Wybierz status protokołu";
+    return null;
   };
+
+  const canGoNext = () => getNextBlockReason() === null;
 
   const goNext = () => {
     if (stepIndex < totalSteps - 1) setStepIndex(s => s + 1);
@@ -1102,6 +1106,12 @@ export default function AgreementNew() {
       {/* Navigation */}
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: "min(560px, 100vw)", background: "var(--color-background)", borderTop: "1px solid var(--color-border)", padding: "8px 16px 14px", boxSizing: "border-box" }}>
         <LiveTicker total={totalPrice} label={calcTickerLabel(data)} currency={data.currency} />
+        {(() => { const reason = getNextBlockReason(); return reason && currentStep !== "podpis" ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: "color-mix(in srgb, #f59e0b 10%, transparent)", marginBottom: 6 }}>
+            <span style={{ fontSize: 13 }}>⚠</span>
+            <span style={{ color: "#b45309", fontSize: 12, fontWeight: 600 }}>{reason}</span>
+          </div>
+        ) : null; })()}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button
           onClick={stepIndex === 0 ? () => setView("home") : goBack}
@@ -1792,7 +1802,15 @@ function StepPomieszczenia({ data, update }: { data: WizardData; update: (p: Par
 
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Pomieszczenia</h2>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Pomieszczenia</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 16 }}>Określ zakres prac w każdym pomieszczeniu.</p>
+      {data.rooms.length === 0 && (
+        <div style={{ textAlign: "center", padding: "24px 16px", borderRadius: 12, border: "1.5px dashed var(--color-border)", marginBottom: 14, color: "var(--color-muted-foreground)" }}>
+          <div style={{ fontSize: 28, marginBottom: 6 }}>🏠</div>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Brak pomieszczeń</div>
+          <div style={{ fontSize: 12 }}>Kliknij preset lub wpisz nazwę poniżej</div>
+        </div>
+      )}
       {data.rooms.map(r => (
         <div key={r.id} style={{ ...sectionCard, position: "relative" }}>
           <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
@@ -2129,6 +2147,14 @@ function StepDodatki({ data, update, additionalTotal }: { data: WizardData; upda
     <div>
       <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Dodatkowe pozycje</h2>
       <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 16 }}>Opcjonalne pozycje dodatkowe do umowy.</p>
+
+      {data.additionalItems.length === 0 && (
+        <div style={{ textAlign: "center", padding: "20px 16px", borderRadius: 12, border: "1.5px dashed var(--color-border)", marginBottom: 14, color: "var(--color-muted-foreground)" }}>
+          <div style={{ fontSize: 28, marginBottom: 6 }}>➕</div>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Brak dodatkowych pozycji</div>
+          <div style={{ fontSize: 12 }}>Opcjonalne — dodaj materiały, dojazd, licencje itp.</div>
+        </div>
+      )}
 
       {data.additionalItems.map(item => (
         <div key={item.id} style={sectionCard}>
@@ -2577,15 +2603,37 @@ function StepPrzeglad({ data, steps, goToStep, warnings, totalPrice }: { data: W
         <Row label="Transport" value={data.transportBy === "client" ? (data.category === "sprzedaz" ? "Kupujący" : "Zamawiający") : (data.category === "sprzedaz" ? "Sprzedający" : "Wykonawca")} />
         <Row label="Gwarancja" value={data.warranty ? `${data.warrantyDays} dni` : "Brak"} />
         <Row label="Kara za opóźnienie" value={data.latePenalty ? `${data.latePenaltyAmount} ${data.currency}/dzień` : "Brak"} />
+        {data.requireApproval && <Row label="Zatwierdzanie zmian" value="Wymagana zgoda obu stron" />}
+        {data.weekendWork && <Row label="Praca w weekendy" value="Tak" />}
+        {data.scopeDescription ? <Row label="Opis zakresu" value={data.scopeDescription.slice(0, 80) + (data.scopeDescription.length > 80 ? "…" : "")} /> : null}
       </Section>
       <Section id="platnosc" title="Płatność" stepId="platnosc">
         <Row label="Model płatności" value={({ upfront: "Z góry", after: "Po wykonaniu", stages: "Etapami", deposit: "Depozyt", partial_deposit: "Częściowy depozyt" } as Record<string,string>)[data.paymentMethod] ?? data.paymentMethod} />
         {data.depositCovers.length > 0 && <Row label="Depozyt obejmuje" value={data.depositCovers.join(", ")} />}
       </Section>
 
-      <div style={{ background: "color-mix(in srgb, var(--color-primary) 10%, transparent)", borderRadius: 12, border: "1.5px solid var(--color-primary)", padding: 20, textAlign: "center", margin: "16px 0 8px" }}>
-        <div style={{ color: "var(--color-primary)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 6 }}>Łączna kwota umowy</div>
-        <div style={{ color: "var(--color-foreground)", fontSize: 34, fontWeight: 800, letterSpacing: -0.5 }}>{totalPrice.toLocaleString("pl-PL")} {data.currency}</div>
+      {/* Completeness check */}
+      {(() => {
+        const missing: string[] = [];
+        if (!data.inviteContact) missing.push("Kontakt drugiej strony");
+        if (!data.pricingMethod || totalPrice === 0) missing.push("Kwota umowy");
+        if (!data.paymentMethod) missing.push("Metoda płatności");
+        if (data.category === "wynajem" && !data.rentalDeposit) missing.push("Kaucja");
+        return missing.length > 0 ? (
+          <div style={{ background: "rgba(220,38,38,0.07)", borderRadius: 10, border: "1px solid rgba(220,38,38,0.3)", padding: 12, marginBottom: 12 }}>
+            <div style={{ color: "#dc2626", fontSize: 13, fontWeight: 700, marginBottom: 6 }}>❗ Uzupełnij przed podpisaniem:</div>
+            {missing.map(m => <div key={m} style={{ color: "#dc2626", fontSize: 12, lineHeight: 1.8 }}>• {m}</div>)}
+          </div>
+        ) : (
+          <div style={{ background: "rgba(22,163,74,0.07)", borderRadius: 10, border: "1px solid rgba(22,163,74,0.3)", padding: "10px 14px", marginBottom: 12 }}>
+            <span style={{ color: "#16a34a", fontSize: 13, fontWeight: 700 }}>✓ Umowa kompletna — gotowa do podpisania</span>
+          </div>
+        );
+      })()}
+
+      <div style={{ background: "color-mix(in srgb, var(--color-primary) 10%, transparent)", borderRadius: 12, border: "1.5px solid var(--color-primary)", padding: "14px 20px", textAlign: "center", margin: "0 0 8px" }}>
+        <div style={{ color: "var(--color-primary)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 4 }}>Łączna kwota umowy</div>
+        <div style={{ color: "var(--color-foreground)", fontSize: 32, fontWeight: 800, letterSpacing: -0.5 }}>{totalPrice.toLocaleString("pl-PL")} {data.currency}</div>
       </div>
     </div>
   );
@@ -2594,6 +2642,7 @@ function StepPrzeglad({ data, steps, goToStep, warnings, totalPrice }: { data: W
 // ——— STEP 14: Podpis
 function StepPodpis({ data, update, onSign }: { data: WizardData; update: (p: Partial<WizardData>) => void; onSign: () => void }) {
   const [accepted, setAccepted] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
   const myParty = data.myRole === "contractor" ? data.contractor : data.client;
   const otherParty = data.myRole === "contractor" ? data.client : data.contractor;
   const myLabel = data.myRole === "contractor"
@@ -2666,10 +2715,14 @@ function StepPodpis({ data, update, onSign }: { data: WizardData; update: (p: Pa
           ✍️ Podpisz{hasOtherContact ? " i wyślij zaproszenie" : " umowę"}
         </button>
         <button
-          onClick={() => alert("Zapisano jako szkic")}
-          style={{ ...btnSecondary, width: "100%", padding: "14px 0", fontSize: 14 }}
+          onClick={() => {
+            try { saveDraft(data, 0, `UMW-${new Date().getFullYear()}-draft`); } catch {}
+            setDraftSaved(true);
+            setTimeout(() => setDraftSaved(false), 2500);
+          }}
+          style={{ ...btnSecondary, width: "100%", padding: "14px 0", fontSize: 14, color: draftSaved ? "#16a34a" : undefined, borderColor: draftSaved ? "#16a34a" : undefined }}
         >
-          💾 Zapisz jako szkic
+          {draftSaved ? "✓ Zapisano szkic!" : "💾 Zapisz jako szkic"}
         </button>
       </div>
 
