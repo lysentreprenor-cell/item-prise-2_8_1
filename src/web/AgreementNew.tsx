@@ -962,7 +962,6 @@ export default function AgreementNew() {
     if (currentStep === "rola" && !data.myRole) return "Wybierz swoją rolę w umowie";
     if (currentStep === "kategoria") {
       if (!data.category) return "Wybierz typ umowy";
-      if (data.category === "pozyczka") return "Pożyczki nie są jeszcze obsługiwane";
     }
     if (currentStep === "podkategoria" && !data.subcategory) return "Wybierz podkategorię";
     if (currentStep === "strony" && !data.inviteContact) return "Podaj e-mail lub telefon drugiej strony";
@@ -1263,8 +1262,31 @@ function StepPodkategoria({ data, update, goNext }: { data: WizardData; update: 
   if (data.category === "wlasna") {
     return (
       <div>
-        <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Własna umowa</h2>
-        <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 16 }}>Podaj szczegóły na kolejnych krokach.</p>
+        <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Własna umowa</h2>
+        <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 18, lineHeight: 1.5 }}>Nazwij swoją umowę i opisz jej przedmiot.</p>
+        <div style={sectionCard}>
+          <SectionLabel>Nazwa umowy</SectionLabel>
+          <input
+            value={data.customTitle}
+            onChange={e => update({ customTitle: e.target.value })}
+            placeholder="np. Umowa o opiekę nad zwierzęciem"
+            style={inputStyle}
+          />
+        </div>
+        <div style={sectionCard}>
+          <SectionLabel>Opis (opcjonalnie)</SectionLabel>
+          <textarea
+            value={data.customDesc}
+            onChange={e => update({ customDesc: e.target.value })}
+            placeholder="Krótki opis przedmiotu umowy..."
+            style={textareaStyle}
+          />
+        </div>
+        <div style={{ padding: "10px 14px", borderRadius: 10, background: "color-mix(in srgb, var(--color-primary) 8%, transparent)", border: "1px solid color-mix(in srgb, var(--color-primary) 25%, transparent)" }}>
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 13, lineHeight: 1.6 }}>
+            💡 Pozostałe szczegóły — cena, termin, warunki — uzupełnisz na kolejnych krokach.
+          </div>
+        </div>
       </div>
     );
   }
@@ -2780,8 +2802,21 @@ function StepPrzeglad({ data, steps, goToStep, warnings, totalPrice }: { data: W
           <Row label="Nr rej." value={data.vehicle?.licensePlate ?? ""} />
         </Section>
       )}
+      {data.category === "wynajem" && (
+        <Section id="szczegoly_wynajmu" title="Szczegóły najmu" stepId="szczegoly_wynajmu">
+          {data.rentalTenants > 0 && <Row label="Lokatorzy" value={`${data.rentalTenants} osoba/y`} />}
+          {data.rentalKeys > 0 && <Row label="Klucze" value={`${data.rentalKeys} kpl.`} />}
+          <Row label="Umeblowanie" value={data.rentalFurnitured ? "Tak" : "Nie"} />
+          <Row label="Parking" value={data.rentalParking ? "Tak" : "Nie"} />
+          {data.rentalPets && <Row label="Zwierzęta" value={({ allowed: "Dozwolone", not_allowed: "Niedozwolone", allowed_deposit: "Za kaucją" } as Record<string,string>)[data.rentalPets] ?? "—"} />}
+          {data.rentalNoticePeriod > 0 && <Row label="Okres wypowiedzenia" value={`${data.rentalNoticePeriod} dni`} />}
+          <Row label="Szkody" value={data.rentalDamageLiability ? "Najemca odpowiada" : "Normalne zużycie"} />
+          <Row label="Protokół" value={data.rentalProtocol ? "Wymagany" : "Brak"} />
+        </Section>
+      )}
       <Section id="termin" title="Termin" stepId="termin">
         <Row label="Typ terminu" value={{ single: "Jedna data", range: "Od–do", stages: "Etapy", cyclic: "Cyklicznie", tbd: "Do uzgodnienia" }[data.deadlineType] ?? data.deadlineType} />
+        {data.deadlineType === "cyclic" && data.cyclicInterval > 0 && <Row label="Cykl" value={`co ${data.cyclicInterval} ${({ days: "dni", weeks: "tygodnie", months: "miesiące" } as Record<string,string>)[data.cyclicUnit]}`} />}
         {data.deadlineSingle && <Row label="Data" value={data.deadlineSingle} />}
         {data.deadlineFrom && <Row label="Od" value={data.deadlineFrom} />}
         {data.deadlineTo && <Row label="Do" value={data.deadlineTo} />}
@@ -3075,12 +3110,19 @@ function ContractDocument({ data, contractId, onClose }: { data: WizardData; con
             )},
             { par: "§2. PRZEDMIOT UMOWY", content: (
               <div style={{ fontSize: 13 }}>
-                <p><b>Kategoria:</b> {category}{data.subcategory ? ` › ${data.subcategory}` : ""}</p>
+                <p><b>Kategoria:</b> {category}{data.subcategory ? ` › ${data.subcategory}` : ""}{data.customTitle ? ` — ${data.customTitle}` : ""}</p>
                 {data.scopeDescription && <p><b>Opis:</b> {data.scopeDescription}</p>}
                 {data.customDesc && <p>{data.customDesc}</p>}
                 {data.saleItems.length > 0 && data.saleItems.map((i, idx) => (
                   <p key={i.id}>{idx + 1}. {i.name}{i.condition ? ` — ${i.condition}` : ""}{i.serial ? ` (nr: ${i.serial})` : ""}</p>
                 ))}
+                {data.category === "wynajem" && data.rentalTenants > 1 && <p><b>Liczba najemców:</b> {data.rentalTenants}</p>}
+                {data.category === "wynajem" && data.rentalFurnitured && <p><b>Umeblowanie:</b> Wliczone w najem</p>}
+                {data.category === "wynajem" && data.rentalParking && <p><b>Parking:</b> Wliczony w czynsz</p>}
+                {data.category === "wynajem" && data.rentalPets && <p><b>Zwierzęta:</b> {({ allowed: "Dozwolone", not_allowed: "Niedozwolone", allowed_deposit: "Dozwolone za dodatkową kaucją" } as Record<string,string>)[data.rentalPets]}</p>}
+                {data.category === "wynajem" && data.rentalKeys > 0 && <p><b>Liczba kluczy:</b> {data.rentalKeys} kpl.</p>}
+                {data.category === "wynajem" && data.rentalNoticePeriod > 0 && <p><b>Okres wypowiedzenia:</b> {data.rentalNoticePeriod} dni</p>}
+                {data.category === "wynajem" && data.rentalConditionBefore && <p><b>Stan przy wydaniu:</b> {data.rentalConditionBefore.slice(0, 120)}{data.rentalConditionBefore.length > 120 ? "…" : ""}</p>}
               </div>
             )},
             { par: "§3. WYNAGRODZENIE", content: (
@@ -3096,6 +3138,9 @@ function ContractDocument({ data, contractId, onClose }: { data: WizardData; con
                 {data.deadlineSingle && <p><b>Data realizacji:</b> {data.deadlineSingle}</p>}
                 {data.deadlineFrom && <p><b>Od:</b> {data.deadlineFrom}</p>}
                 {data.deadlineTo && <p><b>Do:</b> {data.deadlineTo}</p>}
+                {data.deadlineType === "cyclic" && data.cyclicInterval > 0 && (
+                  <p><b>Cykl:</b> co {data.cyclicInterval} {({ days: "dni", weeks: "tygodnie", months: "miesiące" } as Record<string,string>)[data.cyclicUnit]}</p>
+                )}
                 {data.rentalFrom && <p><b>Data wydania:</b> {data.rentalFrom}</p>}
                 {data.rentalTo && <p><b>Data zwrotu:</b> {data.rentalTo}</p>}
                 {data.deadlineType === "tbd" && <p>Termin do uzgodnienia przez strony.</p>}
@@ -3393,14 +3438,34 @@ function ContractLifecycle({
   const getCTA = (): CTA => {
     if (phase === "awaiting_counterparty" && !isClient)
       return { label: `✍️ Podpisz jako ${contractorLabel.toLowerCase()} i zaakceptuj`, action: () => setPhase("awaiting_deposit") };
-    if (phase === "awaiting_deposit" && isClient && !paymentSentAt)
-      return { label: `💸 Wysłałem przelew${totalPrice > 0 ? ` — ${totalPrice.toLocaleString("pl-PL")} ${data.currency}` : ""}`, action: savePaymentSent };
-    if (phase === "awaiting_deposit" && !isClient && paymentSentAt)
-      return { label: "✅ Potwierdzam odbiór przelewu → start realizacji", action: confirmPaymentReceived, color: "#16a34a" };
-    if (phase === "in_progress" && !isClient)
-      return { label: "📤 Zgłoś wykonanie zlecenia", action: () => setPhase("awaiting_release") };
-    if (phase === "awaiting_release" && isClient)
-      return { label: `🔓 Potwierdź odbiór i odblokuj środki`, action: () => setPhase("completed"), color: "#16a34a" };
+    if (phase === "awaiting_deposit" && isClient && !paymentSentAt) {
+      const payLabel = data.category === "wynajem"
+        ? `💸 Wysłałem kaucję i pierwszy czynsz${totalPrice > 0 ? ` — ${totalPrice.toLocaleString("pl-PL")} ${data.currency}` : ""}`
+        : `💸 Wysłałem przelew${totalPrice > 0 ? ` — ${totalPrice.toLocaleString("pl-PL")} ${data.currency}` : ""}`;
+      return { label: payLabel, action: savePaymentSent };
+    }
+    if (phase === "awaiting_deposit" && !isClient && paymentSentAt) {
+      const confirmLabel = data.category === "wynajem"
+        ? "✅ Potwierdzam wpłatę kaucji → najem aktywny"
+        : "✅ Potwierdzam odbiór przelewu → start realizacji";
+      return { label: confirmLabel, action: confirmPaymentReceived, color: "#16a34a" };
+    }
+    if (phase === "in_progress" && !isClient) {
+      const submitLabel = data.category === "wynajem"
+        ? "📋 Zgłoś zakończenie najmu"
+        : data.category === "sprzedaz"
+        ? "📦 Zgłoś przekazanie przedmiotu"
+        : "📤 Zgłoś wykonanie zlecenia";
+      return { label: submitLabel, action: () => setPhase("awaiting_release") };
+    }
+    if (phase === "awaiting_release" && isClient) {
+      const releaseLabel = data.category === "wynajem"
+        ? "🔑 Zatwierdź odbiór lokalu i rozlicz kaucję"
+        : data.category === "sprzedaz"
+        ? "🔓 Potwierdź odbiór przedmiotu"
+        : "🔓 Potwierdź odbiór i odblokuj środki";
+      return { label: releaseLabel, action: () => setPhase("completed"), color: "#16a34a" };
+    }
     return null;
   };
 
