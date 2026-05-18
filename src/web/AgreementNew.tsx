@@ -552,7 +552,7 @@ function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContr
 }
 
 const inputStyle: React.CSSProperties = {
-  width: "100%", padding: "12px 16px", borderRadius: 10,
+  width: "100%", padding: "12px 16px", borderRadius: 10, minHeight: 44,
   border: "1px solid var(--color-border)", background: "var(--color-card)",
   color: "var(--color-foreground)", fontSize: 16, boxSizing: "border-box",
 };
@@ -560,8 +560,8 @@ const textareaStyle: React.CSSProperties = {
   ...inputStyle, resize: "vertical", minHeight: 90, fontFamily: "inherit",
 };
 const labelStyle: React.CSSProperties = {
-  fontSize: 12, fontWeight: 700, textTransform: "uppercase",
-  letterSpacing: 0.8, color: "var(--color-muted-foreground)", marginBottom: 8, display: "block",
+  fontSize: 11, fontWeight: 700, textTransform: "uppercase",
+  letterSpacing: "0.07em", color: "var(--color-muted-foreground)", marginBottom: 8, display: "block",
 };
 const cardStyle = (active = false): React.CSSProperties => ({
   padding: "12px 14px", borderRadius: 12, boxSizing: "border-box", width: "100%",
@@ -571,38 +571,50 @@ const cardStyle = (active = false): React.CSSProperties => ({
 });
 const sectionCard: React.CSSProperties = {
   padding: 14, borderRadius: 12, border: "1px solid var(--color-border)",
-  background: "var(--color-card)", marginBottom: 12, boxSizing: "border-box",
+  background: "var(--color-card)", marginBottom: 14, boxSizing: "border-box",
 };
 const tileGrid: React.CSSProperties = {
   display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%",
 };
 const btnPrimary: React.CSSProperties = {
-  padding: "13px 20px", borderRadius: 10, border: "none",
+  padding: "14px 20px", borderRadius: 12, border: "none",
   background: "var(--color-primary)", color: "#fff",
   fontSize: 16, fontWeight: 700, cursor: "pointer",
 };
 const btnSecondary: React.CSSProperties = {
-  padding: "13px 20px", borderRadius: 10,
+  padding: "13px 20px", borderRadius: 12,
   border: "1px solid var(--color-border)", background: "transparent",
-  color: "var(--color-muted-foreground)", fontSize: 16, fontWeight: 600, cursor: "pointer",
+  color: "var(--color-muted-foreground)", fontSize: 15, fontWeight: 600, cursor: "pointer",
 };
+const pillStyle = (active: boolean): React.CSSProperties => ({
+  padding: "7px 14px", borderRadius: 20, cursor: "pointer", fontSize: 13,
+  fontWeight: active ? 700 : 500,
+  border: `1.5px solid ${active ? "var(--color-primary)" : "var(--color-border)"}`,
+  background: active ? "var(--color-primary)" : "var(--color-card)",
+  color: active ? "#fff" : "var(--color-muted-foreground)",
+  transition: "background 0.15s, color 0.15s, border-color 0.15s",
+  flexShrink: 0,
+});
 
 function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <div
-      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--color-border)" }}
+      onClick={() => onChange(!on)}
+      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 0", borderBottom: "1px solid var(--color-border)", cursor: "pointer", userSelect: "none" }}
     >
-      <span style={{ color: "var(--color-foreground)", fontSize: 16 }}>{label}</span>
+      <span style={{ color: "var(--color-foreground)", fontSize: 15, lineHeight: 1.4, flex: 1, paddingRight: 12 }}>{label}</span>
       <div
-        onClick={() => onChange(!on)}
         style={{
-          width: 44, height: 24, borderRadius: 12, background: on ? "var(--color-primary)" : "var(--color-border)",
-          position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0,
+          width: 48, height: 28, borderRadius: 14,
+          background: on ? "var(--color-primary)" : "var(--color-border)",
+          position: "relative", flexShrink: 0, transition: "background 0.2s",
+          boxShadow: on ? "0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent)" : "none",
         }}
       >
         <div style={{
-          position: "absolute", top: 3, left: on ? 22 : 3, width: 18, height: 18,
-          borderRadius: 9, background: "#fff", transition: "left 0.2s",
+          position: "absolute", top: 4, left: on ? 24 : 4, width: 20, height: 20,
+          borderRadius: 10, background: "#fff", transition: "left 0.2s",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
         }} />
       </div>
     </div>
@@ -782,7 +794,12 @@ function LiveTicker({ total, label, currency }: { total: number; label: string; 
     }
   }, [total]);
 
-  if (total === 0) return <div style={{ height: 42, marginBottom: 8 }} />;
+  if (total === 0) return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 14px", borderRadius: 12, marginBottom: 8, background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
+      <span style={{ color: "var(--color-muted-foreground)", fontSize: 12 }}>Suma umowy</span>
+      <span style={{ color: "var(--color-muted-foreground)", fontSize: 15, fontWeight: 600 }}>—</span>
+    </div>
+  );
 
   return (
     <div style={{
@@ -1074,9 +1091,9 @@ export default function AgreementNew() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--color-background)", display: "flex", flexDirection: "column", width: "100%", maxWidth: "min(560px, 100vw)", margin: "0 auto", paddingBottom: 120, boxSizing: "border-box" }}>
       {/* Progress bar */}
-      <div style={{ padding: "10px 16px 8px", position: "sticky", top: 0, background: "var(--color-background)", zIndex: 10, borderBottom: "1px solid var(--color-border)" }}>
+      <div style={{ padding: "10px 16px 8px", position: "sticky", top: 0, background: "var(--color-background)", zIndex: 10, borderBottom: "1px solid var(--color-border)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
         {/* Dots row */}
-        <div style={{ display: "flex", gap: 3, marginBottom: 8 }}>
+        <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>
           {steps.map((s, i) => {
             const active = i === stepIndex;
             const done = i < stepIndex;
@@ -1086,10 +1103,11 @@ export default function AgreementNew() {
                 onClick={() => done && setStepIndex(i)}
                 title={s.label}
                 style={{
-                  flex: 1, height: 4, borderRadius: 2,
-                  background: active ? "var(--color-primary)" : done ? "color-mix(in srgb, var(--color-primary) 55%, transparent)" : "var(--color-border)",
+                  flex: 1, height: 5, borderRadius: 3,
+                  background: active ? "var(--color-primary)" : done ? "var(--color-primary)" : "var(--color-border)",
+                  opacity: done ? 0.5 : 1,
                   cursor: done ? "pointer" : "default",
-                  transition: "background 0.2s",
+                  transition: "background 0.2s, opacity 0.2s",
                 }}
               />
             );
@@ -1108,7 +1126,7 @@ export default function AgreementNew() {
             )}
           </div>
           <span style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 600, flexShrink: 0, marginLeft: 8 }}>
-            {Math.round((stepIndex / (totalSteps - 1)) * 100)}%
+            {stepIndex + 1}/{totalSteps}
           </span>
         </div>
       </div>
@@ -1150,31 +1168,38 @@ export default function AgreementNew() {
       </div>
 
       {/* Navigation */}
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: "min(560px, 100vw)", background: "var(--color-background)", borderTop: "1px solid var(--color-border)", padding: "8px 16px 14px", boxSizing: "border-box" }}>
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: "min(560px, 100vw)", background: "var(--color-background)", borderTop: "1px solid var(--color-border)", padding: "8px 16px 16px", boxSizing: "border-box", boxShadow: "0 -2px 12px rgba(0,0,0,0.07)" }}>
         <LiveTicker total={totalPrice} label={calcTickerLabel(data)} currency={data.currency} />
         {(() => { const reason = getNextBlockReason(); return reason && currentStep !== "podpis" ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: "color-mix(in srgb, #f59e0b 10%, transparent)", marginBottom: 6 }}>
-            <span style={{ fontSize: 13 }}>⚠</span>
-            <span style={{ color: "#b45309", fontSize: 12, fontWeight: 600 }}>{reason}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 12px", borderRadius: 8, background: "color-mix(in srgb, #f59e0b 10%, transparent)", borderLeft: "3px solid #f59e0b", marginBottom: 8 }}>
+            <span style={{ fontSize: 14 }}>⚠</span>
+            <span style={{ color: "#92400e", fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>{reason}</span>
           </div>
         ) : null; })()}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <button
-          onClick={stepIndex === 0 ? () => setView("home") : goBack}
-          style={{ width: 56, height: 56, borderRadius: 28, border: "1.5px solid var(--color-border)", background: "transparent", color: "var(--color-muted-foreground)", fontSize: 26, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-        >
-          {stepIndex === 0 ? "⌂" : "←"}
-        </button>
-        <div style={{ color: "var(--color-muted-foreground)", fontSize: 13, fontWeight: 600 }}>{stepIndex + 1} / {totalSteps}</div>
-        {currentStep !== "podpis" && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
           <button
-            onClick={goNext}
-            disabled={!canGoNext()}
-            style={{ width: 56, height: 56, borderRadius: 28, border: "none", background: canGoNext() ? "var(--color-primary)" : "var(--color-border)", color: "#fff", fontSize: 26, cursor: canGoNext() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center" }}
+            onClick={stepIndex === 0 ? () => setView("home") : goBack}
+            style={{ width: 52, height: 52, borderRadius: 26, border: "1.5px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-muted-foreground)", fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
           >
-            →
+            {stepIndex === 0 ? "⌂" : "←"}
           </button>
-        )}
+          <div style={{ flex: 1, textAlign: "center" }}>
+            <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, fontWeight: 600 }}>{steps[stepIndex]?.label}</div>
+            <div style={{ display: "flex", gap: 3, justifyContent: "center", marginTop: 4 }}>
+              {steps.map((_, i) => (
+                <div key={i} style={{ width: i === stepIndex ? 16 : 6, height: 4, borderRadius: 2, background: i < stepIndex ? "var(--color-primary)" : i === stepIndex ? "var(--color-primary)" : "var(--color-border)", opacity: i < stepIndex ? 0.5 : 1, transition: "width 0.2s" }} />
+              ))}
+            </div>
+          </div>
+          {currentStep !== "podpis" && (
+            <button
+              onClick={goNext}
+              disabled={!canGoNext()}
+              style={{ width: 52, height: 52, borderRadius: 26, border: "none", background: canGoNext() ? "var(--color-primary)" : "var(--color-border)", color: "#fff", fontSize: 22, cursor: canGoNext() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: canGoNext() ? "0 3px 10px color-mix(in srgb, var(--color-primary) 35%, transparent)" : "none", transition: "background 0.2s, box-shadow 0.2s" }}
+            >
+              →
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -1366,8 +1391,10 @@ function StagesEditor({ data, update }: { data: WizardData; update: (p: Partial<
       </div>
 
       {stages.length === 0 && (
-        <div style={{ padding: "16px", borderRadius: 10, border: "1px dashed var(--color-border)", textAlign: "center", color: "var(--color-muted-foreground)", fontSize: 14, marginBottom: 10 }}>
-          Dodaj pierwszy etap ↓
+        <div style={{ padding: "20px 16px", borderRadius: 12, border: "1.5px dashed var(--color-border)", textAlign: "center", marginBottom: 12 }}>
+          <div style={{ fontSize: 28, marginBottom: 6 }}>📋</div>
+          <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Brak etapów</div>
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 13 }}>Kliknij "+ Dodaj etap" poniżej ↓</div>
         </div>
       )}
 
@@ -1436,8 +1463,10 @@ function UnitsEditor({ data, update }: { data: WizardData; update: (p: Partial<W
       </div>
 
       {items.length === 0 && (
-        <div style={{ padding: 16, borderRadius: 10, border: "1px dashed var(--color-border)", textAlign: "center", color: "var(--color-muted-foreground)", fontSize: 14, marginBottom: 10 }}>
-          Dodaj pierwszą pozycję ↓
+        <div style={{ padding: "20px 16px", borderRadius: 12, border: "1.5px dashed var(--color-border)", textAlign: "center", marginBottom: 12 }}>
+          <div style={{ fontSize: 28, marginBottom: 6 }}>🧾</div>
+          <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Brak pozycji</div>
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 13 }}>Kliknij "+ Dodaj pozycję" poniżej ↓</div>
         </div>
       )}
 
@@ -1550,7 +1579,7 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
             />
             <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
               {HOUR_PRESETS.map(s => (
-                <div key={s.h} onClick={() => update({ estimatedHours: s.h })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 13, fontWeight: data.estimatedHours === s.h ? 700 : 400, border: `1.5px solid ${data.estimatedHours === s.h ? "var(--color-primary)" : "var(--color-border)"}`, background: data.estimatedHours === s.h ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.estimatedHours === s.h ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>
+                <div key={s.h} onClick={() => update({ estimatedHours: s.h })} style={pillStyle(data.estimatedHours === s.h)}>
                   {s.label}
                 </div>
               ))}
@@ -1578,7 +1607,7 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
             />
             <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
               {DAY_PRESETS.map(s => (
-                <div key={s.d} onClick={() => update({ rentalDays: s.d })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 13, fontWeight: data.rentalDays === s.d ? 700 : 400, border: `1.5px solid ${data.rentalDays === s.d ? "var(--color-primary)" : "var(--color-border)"}`, background: data.rentalDays === s.d ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.rentalDays === s.d ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>
+                <div key={s.d} onClick={() => update({ rentalDays: s.d })} style={pillStyle(data.rentalDays === s.d)}>
                   {s.label}
                 </div>
               ))}
@@ -1605,7 +1634,7 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
             />
             <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
               {WEEK_PRESETS.map(s => (
-                <div key={s.w} onClick={() => update({ rentalWeeks: s.w })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 13, fontWeight: data.rentalWeeks === s.w ? 700 : 400, border: `1.5px solid ${data.rentalWeeks === s.w ? "var(--color-primary)" : "var(--color-border)"}`, background: data.rentalWeeks === s.w ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.rentalWeeks === s.w ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>
+                <div key={s.w} onClick={() => update({ rentalWeeks: s.w })} style={pillStyle(data.rentalWeeks === s.w)}>
                   {s.label}
                 </div>
               ))}
@@ -1632,7 +1661,7 @@ function StepWycena({ data, update }: { data: WizardData; update: (p: Partial<Wi
             />
             <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
               {MONTH_PRESETS.map(s => (
-                <div key={s.m} onClick={() => update({ rentalMonths: s.m })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 13, fontWeight: data.rentalMonths === s.m ? 700 : 400, border: `1.5px solid ${data.rentalMonths === s.m ? "var(--color-primary)" : "var(--color-border)"}`, background: data.rentalMonths === s.m ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.rentalMonths === s.m ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>
+                <div key={s.m} onClick={() => update({ rentalMonths: s.m })} style={pillStyle(data.rentalMonths === s.m)}>
                   {s.label}
                 </div>
               ))}
@@ -1757,7 +1786,7 @@ function StepTermin({ data, update }: { data: WizardData; update: (p: Partial<Wi
           </div>
           <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
             {(data.cyclicUnit === "months" ? [1, 2, 3, 6] : data.cyclicUnit === "weeks" ? [1, 2, 4] : [7, 14, 30]).map(n => (
-              <div key={n} onClick={() => update({ cyclicInterval: n })} style={{ padding: "6px 14px", borderRadius: 20, cursor: "pointer", fontSize: 13, fontWeight: data.cyclicInterval === n ? 700 : 400, border: `1.5px solid ${data.cyclicInterval === n ? "var(--color-primary)" : "var(--color-border)"}`, background: data.cyclicInterval === n ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.cyclicInterval === n ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>{n}</div>
+              <div key={n} onClick={() => update({ cyclicInterval: n })} style={pillStyle(data.cyclicInterval === n)}>{n}</div>
             ))}
             <input type="number" value={data.cyclicInterval || ""} onChange={e => update({ cyclicInterval: parseInt(e.target.value) || 1 })} placeholder="Inna" style={{ ...inputStyle, width: 70, textAlign: "center", padding: "6px 8px", marginBottom: 0 }} min={1} />
           </div>
@@ -1906,10 +1935,10 @@ function StepPomieszczenia({ data, update }: { data: WizardData; update: (p: Par
       <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Pomieszczenia</h2>
       <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 16 }}>Określ zakres prac w każdym pomieszczeniu.</p>
       {data.rooms.length === 0 && (
-        <div style={{ textAlign: "center", padding: "24px 16px", borderRadius: 12, border: "1.5px dashed var(--color-border)", marginBottom: 14, color: "var(--color-muted-foreground)" }}>
-          <div style={{ fontSize: 28, marginBottom: 6 }}>🏠</div>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Brak pomieszczeń</div>
-          <div style={{ fontSize: 12 }}>Kliknij preset lub wpisz nazwę poniżej</div>
+        <div style={{ textAlign: "center", padding: "24px 16px", borderRadius: 12, border: "1.5px dashed var(--color-border)", marginBottom: 14 }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>🏠</div>
+          <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Brak pomieszczeń</div>
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 13 }}>Wybierz pomieszczenie z listy lub wpisz własną nazwę poniżej ↓</div>
         </div>
       )}
       {data.rooms.map(r => (
@@ -2279,7 +2308,7 @@ function StepSzczegolyWynajem({ data, update }: { data: WizardData; update: (p: 
         <SectionLabel>Okres wypowiedzenia (dni)</SectionLabel>
         <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
           {noticePeriodPresets.map(d => (
-            <div key={d} onClick={() => update({ rentalNoticePeriod: d })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 13, fontWeight: data.rentalNoticePeriod === d ? 700 : 400, border: `1.5px solid ${data.rentalNoticePeriod === d ? "var(--color-primary)" : "var(--color-border)"}`, background: data.rentalNoticePeriod === d ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.rentalNoticePeriod === d ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>{d} dni</div>
+            <div key={d} onClick={() => update({ rentalNoticePeriod: d })} style={pillStyle(data.rentalNoticePeriod === d)}>{d} dni</div>
           ))}
         </div>
         <input type="number" value={data.rentalNoticePeriod || ""} onChange={e => update({ rentalNoticePeriod: parseInt(e.target.value) || 0 })} placeholder="np. 30" style={inputStyle} min={0} />
@@ -2583,7 +2612,7 @@ function StepWarunki({ data, update }: { data: WizardData; update: (p: Partial<W
             <SectionLabel>Okres gwarancji (dni)</SectionLabel>
             <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
               {WARRANTY_PRESETS.map(s => (
-                <div key={s.d} onClick={() => update({ warrantyDays: s.d })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: data.warrantyDays === s.d ? 700 : 400, border: `1.5px solid ${data.warrantyDays === s.d ? "var(--color-primary)" : "var(--color-border)"}`, background: data.warrantyDays === s.d ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.warrantyDays === s.d ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>{s.l}</div>
+                <div key={s.d} onClick={() => update({ warrantyDays: s.d })} style={pillStyle(data.warrantyDays === s.d)}>{s.l}</div>
               ))}
             </div>
             <input type="number" value={data.warrantyDays} onChange={e => update({ warrantyDays: parseInt(e.target.value) || 0 })} placeholder="lub wpisz liczbę dni" style={{ ...inputStyle, fontSize: 15 }} />
@@ -2595,7 +2624,7 @@ function StepWarunki({ data, update }: { data: WizardData; update: (p: Partial<W
             <SectionLabel>Kara ({data.currency}/dzień)</SectionLabel>
             <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
               {PENALTY_PRESETS.map(amt => (
-                <div key={amt} onClick={() => update({ latePenaltyAmount: amt })} style={{ padding: "6px 12px", borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: data.latePenaltyAmount === amt ? 700 : 400, border: `1.5px solid ${data.latePenaltyAmount === amt ? "var(--color-primary)" : "var(--color-border)"}`, background: data.latePenaltyAmount === amt ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: data.latePenaltyAmount === amt ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>{amt} {data.currency}</div>
+                <div key={amt} onClick={() => update({ latePenaltyAmount: amt })} style={pillStyle(data.latePenaltyAmount === amt)}>{amt} {data.currency}</div>
               ))}
             </div>
             <input type="number" value={data.latePenaltyAmount} onChange={e => update({ latePenaltyAmount: parseFloat(e.target.value) || 0 })} placeholder="lub wpisz kwotę" style={{ ...inputStyle, fontSize: 15 }} />
