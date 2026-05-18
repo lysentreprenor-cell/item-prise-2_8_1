@@ -154,6 +154,9 @@ interface WizardData {
   rentalMonths: number;
   releaseDeposit: boolean;
   signed: boolean;
+  bankAccount: string;
+  bankBlik: string;
+  paymentTitle: string;
 }
 
 const INITIAL: WizardData = {
@@ -180,6 +183,7 @@ const INITIAL: WizardData = {
   estimatedHours: 0, unitItems: [], saleItems: [],
   rentalDays: 0, rentalWeeks: 0, rentalMonths: 0,
   signed: false,
+  bankAccount: "", bankBlik: "", paymentTitle: "",
 };
 
 // ——— Style helpers
@@ -205,6 +209,7 @@ interface SavedContract {
   events: ActivityEvent[];
   rating?: number;
   ratingNote?: string;
+  paidStages?: string[];
 }
 
 const LS_DRAFT_KEY = "itemprise_draft";
@@ -2251,13 +2256,18 @@ function StepWycenaKoncowa({ data, totalPrice, additionalTotal, goBack }: { data
 }
 
 // ——— STEP 10: Płatność i depozyt
+function formatIBAN(raw: string): string {
+  const clean = raw.replace(/\s/g, "").toUpperCase();
+  return clean.replace(/(.{4})/g, "$1 ").trim();
+}
+
 function StepPlatnosc({ data, update, totalPrice }: { data: WizardData; update: (p: Partial<WizardData>) => void; totalPrice: number }) {
   const paymentMethods: { value: PaymentMethodType; label: string; icon: string; desc: string }[] = [
     { value: "upfront", label: "Płatność z góry", icon: "💵", desc: "Cała kwota przed realizacją" },
     { value: "after", label: "Po wykonaniu", icon: "✅", desc: "Płatność po odbiorze prac" },
     { value: "stages", label: "Etapami", icon: "📋", desc: "Kolejne płatności za etapy" },
-    { value: "deposit", label: "Depozyt", icon: "🔒", desc: "Środki trzymane w depozycie" },
-    { value: "partial_deposit", label: "Część z góry + depozyt", icon: "📦", desc: "Zaliczka i reszta w depozycie" },
+    { value: "deposit", label: "Depozyt escrow", icon: "🔒", desc: "Środki zablokowane do odbioru" },
+    { value: "partial_deposit", label: "Zaliczka + depozyt", icon: "📦", desc: "Część z góry, reszta w depozycie" },
   ];
 
   const toggleDepositCover = (v: string) => {
@@ -2268,12 +2278,19 @@ function StepPlatnosc({ data, update, totalPrice }: { data: WizardData; update: 
   };
 
   const depositAmount = data.paymentMethod === "deposit" ? totalPrice
-    : data.paymentMethod === "partial_deposit" ? totalPrice * 0.7
+    : data.paymentMethod === "partial_deposit" ? Math.round(totalPrice * 0.7)
     : 0;
+
+  // Auto-generate payment title from contract data
+  const autoTitle = [
+    data.category === "sprzedaz" ? "Sprzedaż" : data.category === "wynajem" ? "Wynajem" : "Umowa",
+    data.subcategory || "",
+    data.contractor.name || data.client.name || "",
+  ].filter(Boolean).join(" — ").slice(0, 60);
 
   return (
     <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Płatność i depozyt</h2>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Płatność</h2>
       <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 16 }}>Jak zostanie podzielona kwota {totalPrice > 0 ? `${totalPrice.toLocaleString("pl-PL")} ${data.currency}` : ""}?</p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
@@ -2313,6 +2330,46 @@ function StepPlatnosc({ data, update, totalPrice }: { data: WizardData; update: 
           )}
         </div>
       )}
+
+      {/* Bank account section */}
+      <div style={{ ...sectionCard, marginTop: 4 }}>
+        <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 700, marginBottom: 12 }}>💳 Dane do przelewu (opcjonalne)</div>
+
+        <div style={{ marginBottom: 12 }}>
+          <SectionLabel>Numer konta (IBAN)</SectionLabel>
+          <input
+            value={data.bankAccount}
+            onChange={e => update({ bankAccount: formatIBAN(e.target.value) })}
+            placeholder="PL61 1090 1014 0000 0712 1981 2874"
+            style={{ ...inputStyle, fontFamily: "monospace", letterSpacing: "0.04em" }}
+            maxLength={34}
+          />
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <SectionLabel>BLIK / Telefon (alternatywnie)</SectionLabel>
+          <input
+            value={data.bankBlik}
+            onChange={e => update({ bankBlik: e.target.value })}
+            placeholder="+48 600 000 000"
+            style={inputStyle}
+            type="tel"
+          />
+        </div>
+
+        <div>
+          <SectionLabel>Tytuł przelewu</SectionLabel>
+          <input
+            value={data.paymentTitle || autoTitle}
+            onChange={e => update({ paymentTitle: e.target.value })}
+            placeholder={autoTitle || "Tytuł przelewu..."}
+            style={inputStyle}
+          />
+          {!data.paymentTitle && autoTitle && (
+            <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, marginTop: 4 }}>Auto-wygenerowany — możesz zmienić</div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -3214,6 +3271,136 @@ function ContractLifecycle({
           </button>
         </div>
       )}
+
+      {/* Transfer details card — shown for client when awaiting deposit */}
+      {phase === "awaiting_deposit" && isClient && (() => {
+        const account = data.bankAccount;
+        const blik = data.bankBlik;
+        const title = data.paymentTitle || [
+          data.category === "sprzedaz" ? "Sprzedaż" : data.category === "wynajem" ? "Wynajem" : "Umowa",
+          data.subcategory || "",
+          (isClient ? data.contractor.name : data.client.name) || "",
+        ].filter(Boolean).join(" — ").slice(0, 60);
+        const recipientName = data.contractor.name || data.inviteContact || "Wykonawca";
+        const [copied, setCopied] = useState(false);
+
+        if (!account && !blik) {
+          return (
+            <div style={{ ...sectionCard, marginBottom: 16 }}>
+              <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>💳 Dane do przelewu</div>
+              <div style={{ color: "var(--color-muted-foreground)", fontSize: 13, lineHeight: 1.6 }}>
+                Wykonawca nie podał danych bankowych. Skontaktuj się z nim bezpośrednio: <strong>{invited}</strong>
+              </div>
+            </div>
+          );
+        }
+
+        const copyAll = async () => {
+          const lines = [
+            account ? `Konto: ${account}` : null,
+            blik ? `BLIK/Tel: ${blik}` : null,
+            `Tytuł: ${title}`,
+            `Kwota: ${totalPrice.toLocaleString("pl-PL")} ${data.currency}`,
+            `Odbiorca: ${recipientName}`,
+          ].filter(Boolean).join("\n");
+          await navigator.clipboard.writeText(lines);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        };
+
+        return (
+          <div style={{ ...sectionCard, marginBottom: 16, border: "1.5px solid color-mix(in srgb, var(--color-primary) 40%, transparent)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 700 }}>💳 Dane do przelewu</div>
+              <button
+                onClick={copyAll}
+                style={{ background: copied ? "color-mix(in srgb, #16a34a 12%, transparent)" : "color-mix(in srgb, var(--color-primary) 10%, transparent)", border: `1px solid ${copied ? "#16a34a" : "color-mix(in srgb, var(--color-primary) 30%, transparent)"}`, borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer", color: copied ? "#16a34a" : "var(--color-primary)" }}
+              >
+                {copied ? "✓ Skopiowano!" : "📋 Kopiuj"}
+              </button>
+            </div>
+            {[
+              { label: "Odbiorca", value: recipientName },
+              account ? { label: "Numer konta", value: account, mono: true } : null,
+              blik ? { label: "BLIK / Telefon", value: blik } : null,
+              { label: "Tytuł przelewu", value: title },
+              { label: "Kwota", value: `${totalPrice.toLocaleString("pl-PL")} ${data.currency}`, highlight: true },
+            ].filter(Boolean).map((row: any) => (
+              <div key={row.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "7px 0", borderBottom: "1px solid var(--color-border)" }}>
+                <span style={{ color: "var(--color-muted-foreground)", fontSize: 12, flexShrink: 0, marginRight: 8 }}>{row.label}</span>
+                <span style={{ color: row.highlight ? "var(--color-primary)" : "var(--color-foreground)", fontSize: row.highlight ? 15 : 13, fontWeight: row.highlight ? 800 : 500, fontFamily: row.mono ? "monospace" : undefined, textAlign: "right", wordBreak: "break-all" }}>{row.value}</span>
+              </div>
+            ))}
+            <button
+              onClick={() => shareContract(contractId, data, totalPrice)}
+              style={{ ...btnSecondary, width: "100%", padding: "10px", fontSize: 13, marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+            >
+              📤 Udostępnij dane do przelewu
+            </button>
+          </div>
+        );
+      })()}
+
+      {/* Stage payment tracker */}
+      {data.pricingMethod === "stages" && data.paymentStages.length > 0 && (phase === "awaiting_deposit" || phase === "in_progress" || phase === "awaiting_release" || phase === "completed") && (() => {
+        const paidStages = (() => { try { const c = loadContracts().find(c => c.contractId === contractId); return c?.paidStages || []; } catch { return []; } })();
+        const totalPaid = data.paymentStages.filter(s => paidStages.includes(s.id)).reduce((sum, s) => sum + s.amount, 0);
+        const totalAll = data.paymentStages.reduce((sum, s) => sum + s.amount, 0);
+        const pct = totalAll > 0 ? Math.round((totalPaid / totalAll) * 100) : 0;
+
+        const markPaid = (id: string) => {
+          try {
+            const existing = loadContracts();
+            const idx = existing.findIndex(c => c.contractId === contractId);
+            if (idx >= 0) {
+              const current = existing[idx].paidStages || [];
+              existing[idx].paidStages = current.includes(id) ? current.filter(x => x !== id) : [...current, id];
+              localStorage.setItem(LS_CONTRACTS_KEY, JSON.stringify(existing));
+              addContractEvent(contractId, { type: "phase_change", icon: "💰", label: `Etap zapłacony: ${data.paymentStages.find(s => s.id === id)?.name || id}` });
+            }
+          } catch {}
+        };
+
+        return (
+          <div style={{ ...sectionCard, marginBottom: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 700 }}>📋 Etapy płatności</div>
+              <div style={{ color: "var(--color-primary)", fontSize: 13, fontWeight: 700 }}>{pct}% zapłacone</div>
+            </div>
+            {/* Progress bar */}
+            <div style={{ height: 6, borderRadius: 3, background: "var(--color-border)", marginBottom: 12, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${pct}%`, background: "var(--color-primary)", borderRadius: 3, transition: "width 0.3s" }} />
+            </div>
+            {data.paymentStages.map((s, i) => {
+              const paid = paidStages.includes(s.id);
+              const isCurrent = !paid && paidStages.length === i;
+              return (
+                <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: i < data.paymentStages.length - 1 ? "1px solid var(--color-border)" : "none" }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 14, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: paid ? "color-mix(in srgb, #16a34a 12%, transparent)" : isCurrent ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", border: `1.5px solid ${paid ? "#16a34a" : isCurrent ? "var(--color-primary)" : "var(--color-border)"}` }}>
+                    <span style={{ fontSize: 12 }}>{paid ? "✓" : isCurrent ? "⏳" : "🔒"}</span>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: paid ? "#16a34a" : isCurrent ? "var(--color-foreground)" : "var(--color-muted-foreground)", fontSize: 13, fontWeight: paid || isCurrent ? 700 : 400 }}>{s.name || `Etap ${i + 1}`}</div>
+                    <div style={{ color: "var(--color-muted-foreground)", fontSize: 12 }}>{s.amount.toLocaleString("pl-PL")} {data.currency}</div>
+                  </div>
+                  {isClient && (isCurrent || paid) && (
+                    <button
+                      onClick={() => markPaid(s.id)}
+                      style={{ padding: "4px 10px", borderRadius: 8, border: `1px solid ${paid ? "#16a34a" : "var(--color-border)"}`, background: paid ? "color-mix(in srgb, #16a34a 10%, transparent)" : "var(--color-card)", color: paid ? "#16a34a" : "var(--color-muted-foreground)", fontSize: 11, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
+                    >
+                      {paid ? "✓ Zapłacone" : "Oznacz"}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 10, marginTop: 4 }}>
+              <span style={{ color: "var(--color-muted-foreground)", fontSize: 12 }}>Zapłacono</span>
+              <span style={{ color: "var(--color-primary)", fontSize: 13, fontWeight: 800 }}>{totalPaid.toLocaleString("pl-PL")} / {totalAll.toLocaleString("pl-PL")} {data.currency}</span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* CTA */}
       {cta && (
