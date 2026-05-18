@@ -724,7 +724,6 @@ const STEP_HINTS: Record<string, { icon: string; text: string }> = {
   wycena_koncowa: { icon: "💰", text: "Sprawdź dokładnie. Po podpisaniu zmiany wymagają aneksu." },
   platnosc: { icon: "🛡️", text: "Depozyt blokuje środki do odbioru — chronisz siebie bez ryzykowania relacji." },
   warunki: { icon: "⚖️", text: "Jasne warunki = brak zaskoczeń. Każda strona wie czego się spodziewać." },
-  protokol: { icon: "✅", text: "Protokół odbioru to ostatni krok przed wypłatą — nie pomijaj go." },
   przeglad: { icon: "👁️", text: "Ostatnia szansa na sprawdzenie. Każdy błąd teraz = problem po podpisaniu." },
 };
 
@@ -754,7 +753,6 @@ function getSteps(category: string) {
   base.push({ id: "platnosc", label: "Sposób płatności" });
   base.push({ id: "warunki", label: "Warunki" });
   base.push(
-    { id: "protokol", label: "Odbiór" },
     { id: "przeglad", label: "Podsumowanie" },
     { id: "podpis", label: "Podpisz" },
   );
@@ -1004,7 +1002,6 @@ export default function AgreementNew() {
       if (data.deadlineType === "single" && !data.deadlineSingle) return "Wybierz datę realizacji";
       if ((data.deadlineType === "range" || data.deadlineType === "cyclic") && (!data.deadlineFrom || !data.deadlineTo)) return "Podaj datę od i datę do";
     }
-    if (currentStep === "protokol" && !data.protocolStatus) return "Wybierz status protokołu";
     return null;
   };
 
@@ -1033,7 +1030,6 @@ export default function AgreementNew() {
       case "wycena_koncowa": return <StepWycenaKoncowa data={data} update={update} totalPrice={totalPrice} additionalTotal={additionalTotal} goBack={goBack} />;
       case "platnosc": return <StepPlatnosc data={data} update={update} totalPrice={totalPrice} />;
       case "warunki": return <StepWarunki data={data} update={update} />;
-      case "protokol": return <StepProtokol data={data} update={update} />;
       case "przeglad": return <StepPrzeglad data={data} steps={steps} goToStep={setStepIndex} warnings={warnings} totalPrice={totalPrice} />;
       case "podpis": return <StepPodpis data={data} update={update} onSign={() => setContractPhase("awaiting_counterparty")} />;
       default: return null;
