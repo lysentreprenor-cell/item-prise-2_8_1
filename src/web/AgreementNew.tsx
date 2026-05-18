@@ -28,6 +28,8 @@ interface PaymentStage {
   id: string;
   name: string;
   amount: number;
+  quantity?: number;
+  description?: string;
   deadline?: string;
 }
 
@@ -782,7 +784,7 @@ function calcTotal(data: WizardData): number {
   let base = 0;
   if (data.pricingMethod === "hourly") base = data.basePrice * (data.estimatedHours || 0);
   else if (data.pricingMethod === "unit") base = data.unitItems.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
-  else if (data.pricingMethod === "stages") base = data.paymentStages.reduce((s, e) => s + e.amount, 0);
+  else if (data.pricingMethod === "stages") base = data.paymentStages.reduce((s, e) => s + e.amount * (e.quantity || 1), 0);
   else if (data.pricingMethod === "per_day") base = data.basePrice * (data.rentalDays || 0);
   else if (data.pricingMethod === "per_week") base = data.basePrice * (data.rentalWeeks || 0);
   else if (data.pricingMethod === "per_month") base = data.basePrice * (data.rentalMonths || 0);
@@ -1116,7 +1118,7 @@ export default function AgreementNew() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--color-background)", display: "flex", flexDirection: "column", width: "100%", maxWidth: "min(560px, 100vw)", margin: "0 auto", paddingBottom: 120, boxSizing: "border-box" }}>
+    <div style={{ minHeight: "100vh", background: "var(--color-background)", display: "flex", flexDirection: "column", width: "100%", maxWidth: "min(560px, 100vw)", margin: "0 auto", paddingBottom: 200, boxSizing: "border-box" }}>
       {/* Progress bar */}
       <div style={{ padding: "10px 16px 8px", position: "sticky", top: 0, background: "var(--color-background)", zIndex: 10, borderBottom: "1px solid var(--color-border)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
         {/* Dots row */}
@@ -1396,10 +1398,10 @@ function StepStrony({ data, update }: { data: WizardData; update: (p: Partial<Wi
 // ——— STEP 4: Wycena
 function StagesEditor({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
   const stages = data.paymentStages;
-  const total = stages.reduce((s, e) => s + e.amount, 0);
+  const total = stages.reduce((s, e) => s + e.amount * (e.quantity || 1), 0);
 
   const addStage = () => update({
-    paymentStages: [...stages, { id: Date.now().toString(), name: `Etap ${stages.length + 1}`, amount: 0 }],
+    paymentStages: [...stages, { id: Date.now().toString(), name: `Etap ${stages.length + 1}`, amount: 0, quantity: 1 }],
   });
   const updateStage = (id: string, patch: Partial<PaymentStage>) =>
     update({ paymentStages: stages.map(s => s.id === id ? { ...s, ...patch } : s) });
@@ -1426,33 +1428,70 @@ function StagesEditor({ data, update }: { data: WizardData; update: (p: Partial<
       )}
 
       {stages.map((stage, i) => (
-        <div key={stage.id} style={{ ...sectionCard, marginBottom: 8, padding: "12px 14px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <span style={{ color: "var(--color-primary)", fontSize: 11, fontWeight: 800, background: "color-mix(in srgb, var(--color-primary) 12%, transparent)", borderRadius: 4, padding: "2px 8px", flexShrink: 0 }}>
-              {i + 1}
+        <div key={stage.id} style={{ ...sectionCard, marginBottom: 10, padding: "14px" }}>
+          {/* Header: numer + usuń */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ color: "var(--color-primary)", fontSize: 11, fontWeight: 800, background: "color-mix(in srgb, var(--color-primary) 12%, transparent)", borderRadius: 4, padding: "2px 10px", flexShrink: 0 }}>
+              Etap {i + 1}
             </span>
-            <input
-              value={stage.name}
-              onChange={e => updateStage(stage.id, { name: e.target.value })}
-              style={{ ...inputStyle, flex: 1, padding: "8px 12px", fontSize: 15 }}
-            />
+            <div style={{ flex: 1 }} />
             <button
               onClick={() => removeStage(stage.id)}
-              style={{ border: "none", background: "transparent", color: "var(--color-muted-foreground)", fontSize: 18, cursor: "pointer", padding: "4px", flexShrink: 0 }}
+              style={{ border: "none", background: "transparent", color: "var(--color-muted-foreground)", fontSize: 20, cursor: "pointer", padding: "2px 6px", flexShrink: 0, lineHeight: 1 }}
             >
               ×
             </button>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <input
-              type="number"
-              value={stage.amount || ""}
-              onChange={e => updateStage(stage.id, { amount: parseFloat(e.target.value) || 0 })}
-              placeholder="0"
-              style={{ ...inputStyle, fontSize: 18, fontWeight: 700, flex: 1 }}
-            />
-            <span style={{ color: "var(--color-muted-foreground)", fontSize: 15, fontWeight: 600, flexShrink: 0 }}>{data.currency}</span>
+          {/* Nazwa etapu */}
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 4 }}>NAZWA ETAPU</div>
+          <input
+            value={stage.name}
+            onChange={e => updateStage(stage.id, { name: e.target.value })}
+            placeholder="np. Fundamenty, Malowanie..."
+            style={{ ...inputStyle, fontSize: 15, marginBottom: 10 }}
+          />
+          {/* Opis zakresu */}
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 4 }}>ZAKRES PRAC W ETAPIE</div>
+          <input
+            value={stage.description || ""}
+            onChange={e => updateStage(stage.id, { description: e.target.value })}
+            placeholder="np. Wylewka, instalacja elektryczna..."
+            style={{ ...inputStyle, fontSize: 14, marginBottom: 10 }}
+          />
+          {/* Ilość i cena */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 4 }}>ILOŚĆ / JEDNOSTKI</div>
+              <input
+                type="number"
+                value={stage.quantity || ""}
+                onChange={e => updateStage(stage.id, { quantity: parseFloat(e.target.value) || undefined })}
+                placeholder="np. 1"
+                style={{ ...inputStyle, fontSize: 15 }}
+                min={1}
+              />
+            </div>
+            <div style={{ flex: 2 }}>
+              <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 4 }}>KWOTA ZA ETAP ({data.currency})</div>
+              <input
+                type="number"
+                value={stage.amount || ""}
+                onChange={e => updateStage(stage.id, { amount: parseFloat(e.target.value) || 0 })}
+                placeholder="0"
+                style={{ ...inputStyle, fontSize: 18, fontWeight: 700 }}
+              />
+            </div>
           </div>
+          {/* Podsumowanie etapu */}
+          {stage.amount > 0 && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+              <span style={{ color: "var(--color-primary)", fontSize: 15, fontWeight: 800 }}>
+                {stage.quantity && stage.quantity > 1 ? `${stage.quantity} × ` : ""}
+                {stage.amount.toLocaleString("pl-PL")} {data.currency}
+                {stage.quantity && stage.quantity > 1 ? ` = ${(stage.quantity * stage.amount).toLocaleString("pl-PL")} ${data.currency}` : ""}
+              </span>
+            </div>
+          )}
         </div>
       ))}
 
