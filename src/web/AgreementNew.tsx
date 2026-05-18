@@ -186,6 +186,14 @@ const INITIAL: WizardData = {
 // ——— LOCAL STORAGE HELPERS
 type ContractPhaseValue = "" | "awaiting_counterparty" | "awaiting_deposit" | "in_progress" | "awaiting_release" | "completed";
 
+interface ActivityEvent {
+  id: string;
+  timestamp: string;
+  type: "phase_change" | "share" | "dispute" | "note";
+  label: string;
+  icon: string;
+}
+
 interface SavedContract {
   id: string;
   contractId: string;
@@ -194,6 +202,9 @@ interface SavedContract {
   phase: ContractPhaseValue;
   createdAt: string;
   updatedAt: string;
+  events: ActivityEvent[];
+  rating?: number;
+  ratingNote?: string;
 }
 
 const LS_DRAFT_KEY = "itemprise_draft";
@@ -231,99 +242,262 @@ function saveContract(contract: SavedContract) {
   } catch {}
 }
 
+function addContractEvent(contractId: string, event: Omit<ActivityEvent, "id" | "timestamp">) {
+  try {
+    const existing = loadContracts();
+    const idx = existing.findIndex(c => c.contractId === contractId);
+    if (idx >= 0) {
+      existing[idx].events = existing[idx].events || [];
+      existing[idx].events.unshift({ ...event, id: Math.random().toString(36).slice(2), timestamp: new Date().toISOString() });
+      localStorage.setItem(LS_CONTRACTS_KEY, JSON.stringify(existing));
+    }
+  } catch {}
+}
+
+const PHASE_EVENTS: Record<string, { label: string; icon: string }> = {
+  awaiting_counterparty: { icon: "✍️", label: "Umowa podpisana — oczekuje na akceptację" },
+  awaiting_deposit:      { icon: "💳", label: "Akceptacja potwierdzona — oczekuje na wpłatę" },
+  in_progress:           { icon: "🔨", label: "Wpłata na escrow potwierdzona — realizacja rozpoczęta" },
+  awaiting_release:      { icon: "📋", label: "Wykonanie zgłoszone — oczekuje na zatwierdzenie" },
+  completed:             { icon: "🔓", label: "Odbiór zatwierdzony — środki odblokowane" },
+};
+
+// ——— CONTRACT TEMPLATES
+const TEMPLATES: { id: string; icon: string; label: string; desc: string; preset: Partial<WizardData> }[] = [
+  {
+    id: "service", icon: "🔨", label: "Usługa", desc: "Praca, pomoc, naprawa",
+    preset: { category: "usluga", subcategory: "Inne", pricingMethod: "fixed", warranty: true, warrantyDays: 30, latePenalty: true, latePenaltyAmount: 100, requireApproval: true },
+  },
+  {
+    id: "rental", icon: "🏠", label: "Wynajem", desc: "Mieszkanie, lokal, sprzęt",
+    preset: { category: "wynajem", subcategory: "Mieszkanie", pricingMethod: "per_month", rentalDeposit: 2000, rentalDamageLiability: true, rentalProtocol: true },
+  },
+  {
+    id: "car", icon: "🚗", label: "Sprzedaż auta", desc: "Samochód, motocykl",
+    preset: { category: "sprzedaz", subcategory: "Samochód", pricingMethod: "fixed" },
+  },
+  {
+    id: "remont", icon: "🛠", label: "Remont", desc: "Malowanie, instalacje",
+    preset: { category: "remont", subcategory: "Generalny remont", pricingMethod: "stages", scopeBeforePhotos: true, warranty: true, warrantyDays: 365, latePenalty: true, latePenaltyAmount: 200 },
+  },
+];
+
+const PHASE_LABELS: Record<string, string> = {
+  awaiting_counterparty: "Oczekuje na akceptację",
+  awaiting_deposit: "Oczekuje na wpłatę",
+  in_progress: "W realizacji",
+  awaiting_release: "Oczekuje na zatwierdzenie",
+  completed: "Zakończona",
+};
+const PHASE_COLORS: Record<string, string> = {
+  awaiting_counterparty: "#f59e0b",
+  awaiting_deposit: "#f59e0b",
+  in_progress: "var(--color-primary)",
+  awaiting_release: "#16a34a",
+  completed: "#6b7280",
+};
+const CAT_LABELS: Record<string, string> = {
+  usluga: "Usługa", remont: "Remont", sprzedaz: "Sprzedaż",
+  wynajem: "Wynajem", wlasna: "Własna", pozyczka: "Pożyczka",
+};
+
 // ——— HOME SCREEN
-function HomeScreen({ onNew, onResume, draft, contracts, onOpenContract }: {
+function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContract }: {
   onNew: () => void;
   onResume: () => void;
+  onTemplate: (preset: Partial<WizardData>) => void;
   draft: { data: WizardData; stepIndex: number } | null;
   contracts: SavedContract[];
   onOpenContract: (c: SavedContract) => void;
 }) {
-  const phaseLabel: Record<string, string> = {
-    awaiting_counterparty: "Oczekuje na akceptację",
-    awaiting_deposit: "Oczekuje na wpłatę",
-    in_progress: "W realizacji",
-    awaiting_release: "Oczekuje na zatwierdzenie",
-    completed: "Zakończona",
-  };
-  const phaseColor: Record<string, string> = {
-    awaiting_counterparty: "#f59e0b",
-    awaiting_deposit: "#f59e0b",
-    in_progress: "var(--color-primary)",
-    awaiting_release: "#16a34a",
-    completed: "#16a34a",
-  };
-  const catLabel: Record<string, string> = {
-    usluga: "Usługa", remont: "Remont", sprzedaz: "Sprzedaż",
-    wynajem: "Wynajem", wlasna: "Własna", pozyczka: "Pożyczka",
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"all" | "active" | "done" | "action">("all");
+
+  // Stats
+  const active = contracts.filter(c => c.phase && c.phase !== "completed");
+  const activeValue = active.reduce((s, c) => s + (c.totalPrice || 0), 0);
+  const needAction = contracts.filter(c => c.phase === "awaiting_release").length;
+  const currency = contracts[0]?.data.currency || "PLN";
+
+  // Deadline helpers
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const deadlineBadge = (c: SavedContract): "overdue" | "soon" | null => {
+    const d = c.data.deadlineSingle;
+    if (!d || c.phase === "completed") return null;
+    const dl = new Date(d); dl.setHours(0, 0, 0, 0);
+    const diff = Math.round((dl.getTime() - today.getTime()) / 86400000);
+    if (diff < 0) return "overdue";
+    if (diff <= 2) return "soon";
+    return null;
   };
 
+  // Filter + search
+  const visible = contracts.filter(c => {
+    const q = search.toLowerCase();
+    const matchSearch = !q ||
+      c.contractId.toLowerCase().includes(q) ||
+      (c.data.inviteContact || "").toLowerCase().includes(q) ||
+      (c.data.subcategory || "").toLowerCase().includes(q) ||
+      (CAT_LABELS[c.data.category] || "").toLowerCase().includes(q);
+    const matchFilter =
+      filter === "all" ? true :
+      filter === "active" ? (c.phase !== "completed") :
+      filter === "done" ? (c.phase === "completed") :
+      filter === "action" ? (c.phase === "awaiting_release") : true;
+    return matchSearch && matchFilter;
+  });
+
+  const filterOpts: { key: typeof filter; label: string }[] = [
+    { key: "all", label: "Wszystkie" },
+    { key: "active", label: "Aktywne" },
+    { key: "done", label: "Zakończone" },
+    { key: "action", label: "Moje działanie" },
+  ];
+
   return (
-    <div style={{ minHeight: "100vh", background: "var(--color-background)", maxWidth: "min(560px, 100vw)", margin: "0 auto", padding: "28px 16px 48px", boxSizing: "border-box" }}>
-      {/* Logo / header */}
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ color: "var(--color-primary)", fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 4 }}>ItemPrise</div>
-        <h1 style={{ color: "var(--color-foreground)", fontSize: 28, fontWeight: 900, margin: 0, lineHeight: 1.2 }}>Moje umowy</h1>
+    <div style={{ minHeight: "100vh", background: "var(--color-background)", maxWidth: "min(560px, 100vw)", margin: "0 auto", padding: "24px 16px 48px", boxSizing: "border-box" }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+        <div>
+          <div style={{ color: "var(--color-primary)", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 2 }}>ItemPrise</div>
+          <h1 style={{ color: "var(--color-foreground)", fontSize: 26, fontWeight: 900, margin: 0, lineHeight: 1.2 }}>Moje umowy</h1>
+        </div>
+        <button onClick={onNew} style={{ background: "var(--color-primary)", color: "#fff", border: "none", borderRadius: 12, padding: "10px 18px", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>+ Nowa</button>
       </div>
+
+      {/* Stats bar */}
+      {contracts.length > 0 && (
+        <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 14, padding: "12px 16px", marginBottom: 16, display: "flex", gap: 0 }}>
+          <div style={{ flex: 1, textAlign: "center", borderRight: "1px solid var(--color-border)", paddingRight: 8 }}>
+            <div style={{ color: "var(--color-primary)", fontSize: 18, fontWeight: 900 }}>{active.length}</div>
+            <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 600 }}>Aktywne</div>
+          </div>
+          <div style={{ flex: 2, textAlign: "center", borderRight: needAction > 0 ? "1px solid var(--color-border)" : undefined, padding: "0 8px" }}>
+            <div style={{ color: "var(--color-foreground)", fontSize: 18, fontWeight: 900 }}>{activeValue > 0 ? `${activeValue.toLocaleString("pl-PL")} ${currency}` : "—"}</div>
+            <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 600 }}>Łączna wartość</div>
+          </div>
+          {needAction > 0 && (
+            <div style={{ flex: 1, textAlign: "center", paddingLeft: 8 }}>
+              <div style={{ color: "#dc2626", fontSize: 18, fontWeight: 900 }}>{needAction}</div>
+              <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 600 }}>Do zrobienia</div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Draft resume banner */}
       {draft && (
-        <div style={{ background: "color-mix(in srgb, var(--color-primary) 10%, transparent)", border: "1.5px solid color-mix(in srgb, var(--color-primary) 40%, transparent)", borderRadius: 14, padding: "14px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 24, flexShrink: 0 }}>📝</span>
+        <div style={{ background: "color-mix(in srgb, var(--color-primary) 10%, transparent)", border: "1.5px solid color-mix(in srgb, var(--color-primary) 40%, transparent)", borderRadius: 14, padding: "12px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 22, flexShrink: 0 }}>📝</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 700, marginBottom: 2 }}>Niedokończona umowa</div>
-            <div style={{ color: "var(--color-muted-foreground)", fontSize: 12 }}>{catLabel[draft.data.category] || "Bez kategorii"}{draft.data.subcategory ? ` › ${draft.data.subcategory}` : ""} · Krok {draft.stepIndex + 1}</div>
+            <div style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 700, marginBottom: 1 }}>Niedokończona umowa</div>
+            <div style={{ color: "var(--color-muted-foreground)", fontSize: 12 }}>{CAT_LABELS[draft.data.category] || "Bez kategorii"}{draft.data.subcategory ? ` › ${draft.data.subcategory}` : ""} · Krok {draft.stepIndex + 1}</div>
           </div>
           <button onClick={onResume} style={{ background: "var(--color-primary)", color: "#fff", border: "none", borderRadius: 10, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>Wznów</button>
         </div>
       )}
 
-      {/* New contract button */}
-      <button
-        onClick={onNew}
-        style={{ width: "100%", padding: "16px", borderRadius: 14, border: "none", background: "var(--color-primary)", color: "#fff", fontSize: 17, fontWeight: 800, cursor: "pointer", marginBottom: 28, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
-      >
-        <span style={{ fontSize: 20 }}>+</span> Nowa umowa
-      </button>
+      {/* Templates */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Zacznij od szablonu</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {TEMPLATES.map(t => (
+            <button
+              key={t.id}
+              onClick={() => onTemplate(t.preset)}
+              style={{ background: "var(--color-card)", border: "1.5px solid var(--color-border)", borderRadius: 14, padding: "14px 12px", cursor: "pointer", textAlign: "left", display: "flex", flexDirection: "column", gap: 4 }}
+            >
+              <span style={{ fontSize: 22 }}>{t.icon}</span>
+              <span style={{ color: "var(--color-foreground)", fontSize: 14, fontWeight: 700, lineHeight: 1.2 }}>{t.label}</span>
+              <span style={{ color: "var(--color-muted-foreground)", fontSize: 11 }}>{t.desc}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Search + filter */}
+      {contracts.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="🔍  Szukaj po stronie, kategorii..."
+            style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-foreground)", fontSize: 14, boxSizing: "border-box", marginBottom: 10 }}
+          />
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
+            {filterOpts.map(f => (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                style={{ flexShrink: 0, padding: "5px 12px", borderRadius: 20, border: `1.5px solid ${filter === f.key ? "var(--color-primary)" : "var(--color-border)"}`, background: filter === f.key ? "color-mix(in srgb, var(--color-primary) 12%, transparent)" : "var(--color-card)", color: filter === f.key ? "var(--color-primary)" : "var(--color-muted-foreground)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Contracts list */}
       {contracts.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--color-muted-foreground)" }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>📄</div>
+        <div style={{ textAlign: "center", padding: "32px 20px", color: "var(--color-muted-foreground)" }}>
+          <div style={{ fontSize: 44, marginBottom: 10 }}>📄</div>
           <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Brak umów</div>
-          <div style={{ fontSize: 13, lineHeight: 1.6 }}>Stwórz pierwszą umowę klikając przycisk powyżej.</div>
+          <div style={{ fontSize: 13, lineHeight: 1.6 }}>Wybierz szablon lub kliknij "+ Nowa".</div>
+        </div>
+      ) : visible.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "32px 20px", color: "var(--color-muted-foreground)" }}>
+          <div style={{ fontSize: 13 }}>Brak wyników dla podanych kryteriów.</div>
         </div>
       ) : (
         <>
-          <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
-            Ostatnie umowy
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
+            Umowy ({visible.length})
           </div>
-          {contracts.map(c => (
-            <div key={c.id} onClick={() => onOpenContract(c)} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 14, padding: "14px 16px", marginBottom: 10, cursor: "pointer" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                <div>
-                  <div style={{ color: "var(--color-foreground)", fontSize: 15, fontWeight: 700, marginBottom: 2 }}>
-                    {catLabel[c.data.category] || "Umowa"}{c.data.subcategory ? ` › ${c.data.subcategory}` : ""}
+          {visible.map(c => {
+            const badge = deadlineBadge(c);
+            return (
+              <div key={c.id} onClick={() => onOpenContract(c)} style={{ background: "var(--color-card)", border: `1.5px solid ${badge === "overdue" ? "#dc2626" : badge === "soon" ? "#f59e0b" : "var(--color-border)"}`, borderRadius: 14, padding: "14px 16px", marginBottom: 10, cursor: "pointer" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: "var(--color-foreground)", fontSize: 15, fontWeight: 700, marginBottom: 2 }}>
+                      {CAT_LABELS[c.data.category] || "Umowa"}{c.data.subcategory ? ` › ${c.data.subcategory}` : ""}
+                    </div>
+                    <div style={{ color: "var(--color-muted-foreground)", fontSize: 12 }}>#{c.contractId} · {new Date(c.createdAt).toLocaleDateString("pl-PL")}</div>
                   </div>
-                  <div style={{ color: "var(--color-muted-foreground)", fontSize: 12 }}>#{c.contractId} · {new Date(c.createdAt).toLocaleDateString("pl-PL")}</div>
+                  <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 8 }}>
+                    {c.totalPrice > 0 && (
+                      <div style={{ color: "var(--color-primary)", fontSize: 15, fontWeight: 800 }}>{c.totalPrice.toLocaleString("pl-PL")} {c.data.currency}</div>
+                    )}
+                    {c.rating && (
+                      <div style={{ color: "#f59e0b", fontSize: 12, fontWeight: 700 }}>{"★".repeat(c.rating)}{"☆".repeat(5 - c.rating)}</div>
+                    )}
+                  </div>
                 </div>
-                <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 8 }}>
-                  {c.totalPrice > 0 && (
-                    <div style={{ color: "var(--color-primary)", fontSize: 15, fontWeight: 800 }}>{c.totalPrice.toLocaleString("pl-PL")} {c.data.currency}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                  {c.phase && (
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 20, background: `color-mix(in srgb, ${PHASE_COLORS[c.phase] || "var(--color-border)"} 12%, transparent)`, border: `1px solid color-mix(in srgb, ${PHASE_COLORS[c.phase] || "var(--color-border)"} 30%, transparent)` }}>
+                      <div style={{ width: 5, height: 5, borderRadius: 3, background: PHASE_COLORS[c.phase] || "var(--color-border)" }} />
+                      <span style={{ color: PHASE_COLORS[c.phase] || "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700 }}>{PHASE_LABELS[c.phase] || c.phase}</span>
+                    </div>
+                  )}
+                  {badge === "overdue" && (
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 20, background: "color-mix(in srgb, #dc2626 12%, transparent)", border: "1px solid color-mix(in srgb, #dc2626 30%, transparent)" }}>
+                      <span style={{ color: "#dc2626", fontSize: 11, fontWeight: 700 }}>⚠ Termin minął</span>
+                    </div>
+                  )}
+                  {badge === "soon" && (
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 20, background: "color-mix(in srgb, #f59e0b 12%, transparent)", border: "1px solid color-mix(in srgb, #f59e0b 30%, transparent)" }}>
+                      <span style={{ color: "#f59e0b", fontSize: 11, fontWeight: 700 }}>⏰ Termin wkrótce</span>
+                    </div>
                   )}
                 </div>
+                {c.data.inviteContact && (
+                  <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, marginTop: 6 }}>Strona: {c.data.inviteContact}</div>
+                )}
               </div>
-              {c.phase && (
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 20, background: `color-mix(in srgb, ${phaseColor[c.phase] || "var(--color-border)"} 12%, transparent)`, border: `1px solid color-mix(in srgb, ${phaseColor[c.phase] || "var(--color-border)"} 30%, transparent)` }}>
-                  <div style={{ width: 6, height: 6, borderRadius: 3, background: phaseColor[c.phase] || "var(--color-border)" }} />
-                  <span style={{ color: phaseColor[c.phase] || "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700 }}>{phaseLabel[c.phase] || c.phase}</span>
-                </div>
-              )}
-              {c.data.inviteContact && (
-                <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, marginTop: 6 }}>Strona: {c.data.inviteContact}</div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </>
       )}
     </div>
@@ -602,6 +776,8 @@ export default function AgreementNew() {
   const [contractId, setContractId] = useState(() => loadDraft()?.contractId ?? `UMW-${new Date().getFullYear()}-${Math.floor(Math.random() * 9000 + 1000)}`);
   const [invitationDismissed, setInvitationDismissed] = useState(false);
   const [showDocument, setShowDocument] = useState(false);
+  const [ratingDone, setRatingDone] = useState(false);
+  const [contractEvents, setContractEvents] = useState<ActivityEvent[]>([]);
 
   useEffect(() => {
     document.body.style.overflowX = "hidden";
@@ -632,15 +808,23 @@ export default function AgreementNew() {
     if (idx >= 0) {
       existing[idx].phase = contractPhase;
       existing[idx].updatedAt = now;
+      existing[idx].events = existing[idx].events || [];
+      const ev = PHASE_EVENTS[contractPhase];
+      if (ev) existing[idx].events.unshift({ ...ev, id: Math.random().toString(36).slice(2), timestamp: now, type: "phase_change" });
       try { localStorage.setItem(LS_CONTRACTS_KEY, JSON.stringify(existing)); } catch {}
+      setContractEvents([...existing[idx].events]);
     } else {
+      const ev = PHASE_EVENTS[contractPhase];
+      const initEvents: ActivityEvent[] = ev ? [{ ...ev, id: Math.random().toString(36).slice(2), timestamp: now, type: "phase_change" }] : [];
       const contract: SavedContract = {
         id: contractId, contractId, data,
         totalPrice: calcTotal(data),
         phase: contractPhase,
         createdAt: now, updatedAt: now,
+        events: initEvents,
       };
       saveContract(contract);
+      setContractEvents(initEvents);
     }
     clearDraft();
     setDraft(null);
@@ -657,6 +841,24 @@ export default function AgreementNew() {
     setContractPhase("");
     setInvitationDismissed(false);
     setShowDocument(false);
+    setRatingDone(false);
+    setContractEvents([]);
+    setView("wizard");
+  };
+
+  const startFromTemplate = (preset: Partial<WizardData>) => {
+    const newId = `UMW-${new Date().getFullYear()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+    setContractId(newId);
+    setData({ ...INITIAL, currency: defaultCurrency, ...preset });
+    // Skip rola/kategoria/podkategoria since template pre-fills them — go to strony
+    const templateSteps = getSteps(preset.category || "");
+    const startIdx = templateSteps.findIndex(s => s.id === "strony");
+    setStepIndex(startIdx > 0 ? startIdx : 0);
+    setContractPhase("");
+    setInvitationDismissed(false);
+    setShowDocument(false);
+    setRatingDone(false);
+    setContractEvents([]);
     setView("wizard");
   };
 
@@ -668,7 +870,9 @@ export default function AgreementNew() {
     setContractId(c.contractId);
     setData(c.data);
     setContractPhase(c.phase || "awaiting_counterparty");
+    setContractEvents(c.events || []);
     setInvitationDismissed(true);
+    setRatingDone(!!c.rating);
     setView("wizard");
   };
 
@@ -762,6 +966,7 @@ export default function AgreementNew() {
       <HomeScreen
         onNew={startNewWizard}
         onResume={resumeWizard}
+        onTemplate={startFromTemplate}
         draft={draft}
         contracts={savedContracts}
         onOpenContract={openContract}
@@ -780,6 +985,19 @@ export default function AgreementNew() {
         />
       );
     }
+    if (contractPhase === "completed" && !ratingDone) {
+      return (
+        <RatingScreen
+          contractId={contractId}
+          data={data}
+          onDone={() => {
+            setRatingDone(true);
+            setSavedContracts(loadContracts());
+            setView("home");
+          }}
+        />
+      );
+    }
     return (
       <>
         <ContractLifecycle
@@ -790,6 +1008,7 @@ export default function AgreementNew() {
           contractId={contractId}
           showDocument={showDocument}
           setShowDocument={setShowDocument}
+          events={contractEvents}
           onNewContract={() => {
             setSavedContracts(loadContracts());
             setView("home");
@@ -2679,8 +2898,89 @@ function ContractDocument({ data, contractId, onClose }: { data: WizardData; con
 // ——— CONTRACT LIFECYCLE (post-wizard escrow flow)
 type ContractPhase = "" | "awaiting_counterparty" | "awaiting_deposit" | "in_progress" | "awaiting_release" | "completed";
 
+// ——— RATING SCREEN
+function RatingScreen({ contractId, data, onDone }: { contractId: string; data: WizardData; onDone: () => void }) {
+  const [stars, setStars] = useState(0);
+  const [hover, setHover] = useState(0);
+  const [note, setNote] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  const save = () => {
+    try {
+      const existing = loadContracts();
+      const idx = existing.findIndex(c => c.contractId === contractId);
+      if (idx >= 0) {
+        existing[idx].rating = stars;
+        existing[idx].ratingNote = note;
+        localStorage.setItem(LS_CONTRACTS_KEY, JSON.stringify(existing));
+      }
+    } catch {}
+    setSaved(true);
+    setTimeout(onDone, 800);
+  };
+
+  const category = CAT_LABELS[data.category] || "Umowa";
+  const sub = data.subcategory ? ` › ${data.subcategory}` : "";
+
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--color-background)", maxWidth: "min(560px, 100vw)", margin: "0 auto", padding: "40px 20px", boxSizing: "border-box", display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div style={{ fontSize: 56, marginBottom: 12 }}>{saved ? "🎊" : "🎉"}</div>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 900, textAlign: "center", marginBottom: 4 }}>
+        {saved ? "Ocena zapisana!" : "Umowa zakończona!"}
+      </h2>
+      <div style={{ color: "var(--color-muted-foreground)", fontSize: 14, textAlign: "center", marginBottom: 32 }}>
+        {category}{sub} · #{contractId}
+      </div>
+      {!saved && (
+        <div style={{ width: "100%", maxWidth: 360 }}>
+          <div style={{ color: "var(--color-foreground)", fontSize: 15, fontWeight: 700, textAlign: "center", marginBottom: 16 }}>
+            Jak oceniasz tę współpracę?
+          </div>
+          {/* Stars */}
+          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 24 }}>
+            {[1, 2, 3, 4, 5].map(n => (
+              <span
+                key={n}
+                onMouseEnter={() => setHover(n)}
+                onMouseLeave={() => setHover(0)}
+                onClick={() => setStars(n)}
+                style={{ fontSize: 40, cursor: "pointer", color: n <= (hover || stars) ? "#f59e0b" : "var(--color-border)", transition: "color 0.1s" }}
+              >
+                ★
+              </span>
+            ))}
+          </div>
+          {stars > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <textarea
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                placeholder="Opcjonalny komentarz..."
+                style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-foreground)", fontSize: 14, resize: "vertical", minHeight: 80, fontFamily: "inherit", boxSizing: "border-box" }}
+              />
+            </div>
+          )}
+          <button
+            onClick={save}
+            disabled={stars === 0}
+            style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: stars > 0 ? "var(--color-primary)" : "var(--color-border)", color: "#fff", fontSize: 16, fontWeight: 700, cursor: stars > 0 ? "pointer" : "not-allowed", marginBottom: 10 }}
+          >
+            Zapisz ocenę
+          </button>
+          <button
+            onClick={onDone}
+            style={{ width: "100%", padding: "14px", borderRadius: 12, border: "1.5px solid var(--color-border)", background: "transparent", color: "var(--color-muted-foreground)", fontSize: 15, cursor: "pointer" }}
+          >
+            Pomiń
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ContractLifecycle({
-  data, phase, setPhase, totalPrice, contractId, showDocument, setShowDocument, onNewContract,
+  data, phase, setPhase, totalPrice, contractId, showDocument, setShowDocument, onNewContract, events,
 }: {
   data: WizardData;
   phase: ContractPhase;
@@ -2690,7 +2990,26 @@ function ContractLifecycle({
   showDocument: boolean;
   setShowDocument: (v: boolean) => void;
   onNewContract: () => void;
+  events: ActivityEvent[];
 }) {
+  const [disputeOpen, setDisputeOpen] = useState(false);
+  const [disputeConfirm, setDisputeConfirm] = useState<"fixes" | "mediation" | "cancel" | null>(null);
+  const [disputeNote, setDisputeNote] = useState("");
+
+  const handleDispute = (type: "fixes" | "mediation" | "cancel") => {
+    if (type === "fixes") {
+      setPhase("in_progress");
+      addContractEvent(contractId, { type: "dispute", icon: "🔁", label: "Poprawki zgłoszone przez klienta" });
+    } else if (type === "mediation") {
+      addContractEvent(contractId, { type: "dispute", icon: "⚖️", label: "Mediacja zgłoszona — oczekuje na arbitra" });
+    } else if (type === "cancel") {
+      setPhase("completed");
+      addContractEvent(contractId, { type: "dispute", icon: "❌", label: "Umowa anulowana — środki zwrócone" });
+    }
+    setDisputeOpen(false);
+    setDisputeConfirm(null);
+  };
+
   const isClient = data.myRole === "client";
   const myParty = isClient ? data.client : data.contractor;
   const otherParty = isClient ? data.contractor : data.client;
@@ -2864,10 +3183,86 @@ function ContractLifecycle({
         </div>
       )}
 
+      {/* Dispute button — for client in active phases */}
+      {isClient && (phase === "in_progress" || phase === "awaiting_release") && (
+        <button
+          onClick={() => setDisputeOpen(true)}
+          style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1.5px solid #f59e0b", background: "color-mix(in srgb, #f59e0b 8%, transparent)", color: "#d97706", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+        >
+          ⚠ Zgłoś problem
+        </button>
+      )}
+
+      {/* Activity log */}
+      {events && events.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Historia aktywności</div>
+          {events.map(e => (
+            <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid var(--color-border)" }}>
+              <span style={{ fontSize: 16, flexShrink: 0, width: 24, textAlign: "center" }}>{e.icon}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: "var(--color-foreground)", fontSize: 13, lineHeight: 1.4 }}>{e.label}</div>
+                <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, marginTop: 2 }}>
+                  {new Date(e.timestamp).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })} {new Date(e.timestamp).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {isFinished && (
-        <button onClick={onNewContract} style={{ ...btnSecondary, width: "100%", padding: "14px", marginTop: 8 }}>
+        <button onClick={onNewContract} style={{ ...btnSecondary, width: "100%", padding: "14px", marginTop: 16 }}>
           + Nowa umowa
         </button>
+      )}
+
+      {/* Dispute sheet overlay */}
+      {disputeOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => { setDisputeOpen(false); setDisputeConfirm(null); }}>
+          <div style={{ background: "var(--color-card)", borderRadius: "20px 20px 0 0", padding: "24px 20px 32px", width: "100%", maxWidth: "min(560px, 100vw)", boxSizing: "border-box" }} onClick={e => e.stopPropagation()}>
+            <div style={{ color: "var(--color-foreground)", fontSize: 18, fontWeight: 800, marginBottom: 6 }}>⚠ Zgłoś problem</div>
+            <div style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 20 }}>Wybierz jak chcesz rozwiązać sytuację:</div>
+            {disputeConfirm === null ? (
+              <>
+                {[
+                  { key: "fixes" as const, icon: "🔁", label: "Poproś o poprawki", desc: "Odesłij wykonawcy do poprawy" },
+                  { key: "mediation" as const, icon: "⚖️", label: "Eskaluj do mediacji", desc: "Poproś o arbitra" },
+                  { key: "cancel" as const, icon: "❌", label: "Anuluj umowę", desc: "Zwróć środki z escrow" },
+                ].map(opt => (
+                  <div
+                    key={opt.key}
+                    onClick={() => setDisputeConfirm(opt.key)}
+                    style={{ display: "flex", gap: 14, alignItems: "center", padding: "14px 0", borderBottom: "1px solid var(--color-border)", cursor: "pointer" }}
+                  >
+                    <span style={{ fontSize: 24, flexShrink: 0 }}>{opt.icon}</span>
+                    <div>
+                      <div style={{ color: "var(--color-foreground)", fontSize: 15, fontWeight: 700 }}>{opt.label}</div>
+                      <div style={{ color: "var(--color-muted-foreground)", fontSize: 12 }}>{opt.desc}</div>
+                    </div>
+                  </div>
+                ))}
+                <button onClick={() => setDisputeOpen(false)} style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1px solid var(--color-border)", background: "transparent", color: "var(--color-muted-foreground)", fontSize: 14, cursor: "pointer", marginTop: 16 }}>Anuluj</button>
+              </>
+            ) : (
+              <div>
+                <div style={{ color: "var(--color-foreground)", fontSize: 15, fontWeight: 700, marginBottom: 8 }}>
+                  {disputeConfirm === "fixes" ? "Opisz co wymaga poprawki:" : disputeConfirm === "mediation" ? "Opisz problem do mediatora:" : "Potwierdź anulowanie umowy:"}
+                </div>
+                <textarea
+                  value={disputeNote}
+                  onChange={e => setDisputeNote(e.target.value)}
+                  placeholder="Opcjonalny opis..."
+                  style={{ width: "100%", padding: "12px", borderRadius: 10, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-foreground)", fontSize: 14, resize: "none", minHeight: 80, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 12 }}
+                />
+                <button onClick={() => handleDispute(disputeConfirm)} style={{ width: "100%", padding: "13px", borderRadius: 12, border: "none", background: disputeConfirm === "cancel" ? "#dc2626" : "var(--color-primary)", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", marginBottom: 8 }}>
+                  {disputeConfirm === "fixes" ? "Wyślij prośbę o poprawki" : disputeConfirm === "mediation" ? "Zgłoś do mediacji" : "Potwierdź anulowanie"}
+                </button>
+                <button onClick={() => setDisputeConfirm(null)} style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1px solid var(--color-border)", background: "transparent", color: "var(--color-muted-foreground)", fontSize: 14, cursor: "pointer" }}>Wstecz</button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
