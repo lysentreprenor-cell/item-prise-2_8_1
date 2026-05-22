@@ -62,6 +62,8 @@ export default function Security() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   // PIN setup — pinEnabled comes from backend security settings
   const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [frozen, setFrozen] = useState(() => localStorage.getItem("finlys_frozen") === "true");
+  const [showFreezeConfirm, setShowFreezeConfirm] = useState(false);
 
   async function toggle(key: keyof SecuritySettings, value: boolean) {
     if (!settings) return;
@@ -344,6 +346,50 @@ export default function Security() {
             </div>
           </div>
         </motion.div>
+
+        {/* Emergency Freeze */}
+        <div style={{ background: frozen ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.03)", border: `1.5px solid ${frozen ? "rgba(220,38,38,0.40)" : "rgba(255,255,255,0.08)"}`, borderRadius: 20, padding: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: frozen ? "rgba(220,38,38,0.20)" : "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
+              {frozen ? "🔒" : "🛡️"}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: frozen ? "#fca5a5" : "var(--color-foreground)" }}>
+                {frozen ? (pl ? "Konto zamrożone" : "Account frozen") : (pl ? "Zamroź konto" : "Freeze account")}
+              </div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
+                {frozen ? (pl ? "Wszystkie przelewy są zablokowane" : "All transfers are blocked") : (pl ? "Zablokuj natychmiast wszystkie transakcje wychodzące" : "Immediately block all outgoing transactions")}
+              </div>
+            </div>
+            <button
+              onClick={() => { if (frozen) { setFrozen(false); localStorage.removeItem("finlys_frozen"); } else { setShowFreezeConfirm(true); } }}
+              style={{ height: 36, borderRadius: 20, padding: "0 16px", background: frozen ? "rgba(220,38,38,0.20)" : "rgba(255,255,255,0.06)", border: `1px solid ${frozen ? "rgba(220,38,38,0.40)" : "rgba(255,255,255,0.12)"}`, color: frozen ? "#fca5a5" : "var(--color-foreground)", fontWeight: 700, fontSize: 13, cursor: "pointer", flexShrink: 0 }}
+            >
+              {frozen ? (pl ? "Odblokuj" : "Unfreeze") : (pl ? "Zamroź" : "Freeze")}
+            </button>
+          </div>
+        </div>
+
+        {/* Freeze confirmation modal */}
+        {showFreezeConfirm && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }} onClick={() => setShowFreezeConfirm(false)}>
+            <div style={{ background: "var(--color-card)", borderRadius: 24, padding: 28, maxWidth: 360, width: "100%" }} onClick={e => e.stopPropagation()}>
+              <div style={{ fontSize: 40, textAlign: "center", marginBottom: 16 }}>🔒</div>
+              <div style={{ fontSize: 18, fontWeight: 700, textAlign: "center", marginBottom: 8 }}>
+                {pl ? "Zamrozić konto?" : "Freeze account?"}
+              </div>
+              <div style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", textAlign: "center", marginBottom: 24 }}>
+                {pl ? "Wszystkie przelewy wychodzące zostaną natychmiast zablokowane. Możesz odblokować w dowolnym momencie." : "All outgoing transfers will be immediately blocked. You can unfreeze at any time."}
+              </div>
+              <button onClick={() => { setFrozen(true); localStorage.setItem("finlys_frozen", "true"); setShowFreezeConfirm(false); }} style={{ width: "100%", height: 48, borderRadius: 14, background: "#dc2626", color: "#fff", fontWeight: 700, fontSize: 15, border: "none", cursor: "pointer", marginBottom: 10 }}>
+                {pl ? "Zamroź teraz" : "Freeze now"}
+              </button>
+              <button onClick={() => setShowFreezeConfirm(false)} style={{ width: "100%", height: 44, borderRadius: 14, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "var(--color-foreground)", fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
+                {pl ? "Anuluj" : "Cancel"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-2xl px-4 py-3">{error}</div>

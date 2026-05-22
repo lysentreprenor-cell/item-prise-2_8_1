@@ -9,6 +9,7 @@ import { useLang } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
+
 export default function History() {
   const [, setLocation] = useLocation();
   const { transactions } = useAppStore();
@@ -23,6 +24,7 @@ export default function History() {
   const pl = lang === "pl";
   const filterActive = filterType !== "all" || filterPeriod !== "all";
   const [showReport, setShowReport] = useState(false);
+  const [swipeX, setSwipeX] = useState<Record<string, number>>({});
 
   const chartData = useMemo(() => {
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
@@ -83,6 +85,23 @@ export default function History() {
   }, [filteredTransactions, pl]);
 
   const textPrimary = isLight ? "text-gray-900" : "text-white/90";
+
+  const exportCSV = () => {
+    const headers = ["Data", "Tytuł", "Opis", "Kwota", "Typ"];
+    const rows = filteredTransactions.map(tx => [
+      new Date(tx.date).toLocaleDateString("pl-PL"),
+      `"${tx.title.replace(/"/g, '""')}"`,
+      `"${tx.subtitle.replace(/"/g, '""')}"`,
+      tx.amount.toFixed(2),
+      tx.type,
+    ]);
+    const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `transakcje_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="min-h-screen bg-background pb-24 relative overflow-hidden">
@@ -231,6 +250,9 @@ export default function History() {
             >
               {pl ? "Pobierz PDF" : "Download PDF"}
             </button>
+            <button onClick={exportCSV} style={{ width: "100%", height: 44, borderRadius: 14, marginTop: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "var(--color-foreground)", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+              {pl ? "Eksportuj CSV" : "Export CSV"}
+            </button>
           </div>
         </div>
       )}
@@ -295,33 +317,67 @@ export default function History() {
                 </div>
 
                 <div className="bg-card rounded-3xl border border-white/5 shadow-premium overflow-hidden">
-                  {group.transactions.map((tx, i, arr) => (
-                    <div
-                      key={tx.id}
-                      data-testid={`row-transaction-${tx.id}`}
-                      className={`flex items-center gap-4 p-5 hover:bg-secondary/50 transition-colors cursor-pointer group ${i !== arr.length - 1 ? "border-b border-white/5" : ""}`}
-                      onClick={() => setLocation(`/transaction/${tx.id}`)}
-                    >
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner-glow transition-colors ${tx.amount > 0 ? "bg-primary/10 text-primary border border-primary/20" : "bg-secondary text-foreground"}`}>
-                        {tx.amount > 0 ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <h4 className={`font-semibold text-[15px] truncate ${textPrimary}`}>{tx.title}</h4>
-                        <p className="text-[13px] text-muted-foreground truncate font-medium mt-1">{tx.subtitle}</p>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        <div className={`font-semibold tracking-wide ${tx.amount > 0 ? "text-primary" : textPrimary}`}>
-                          {tx.amount > 0 ? "+" : ""}
-                          {tx.amount.toLocaleString(pl ? "pl-PL" : "en-US", { style: "currency", currency: "USD" })}
+                  {group.transactions.map((tx, i, arr) => {
+                    let startX = 0;
+                    return (
+                      <div key={tx.id} style={{ position: "relative", overflow: "hidden" }} className={i !== arr.length - 1 ? "border-b border-white/5" : ""}>
+                        {/* Left hint — revealed on swipe right */}
+                        <div style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", color: "var(--color-primary)", fontSize: 12, fontWeight: 700, pointerEvents: "none" }}>
+                          ♥ {pl ? "Ulubione" : "Favorite"}
                         </div>
-                        <div className="text-[12px] text-muted-foreground mt-1 font-medium uppercase tracking-wider">
-                          {new Date(tx.date).toLocaleDateString(pl ? "pl-PL" : "en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        {/* Right hint — revealed on swipe left */}
+                        <div style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.60)", fontSize: 12, fontWeight: 700, pointerEvents: "none" }}>
+                          {pl ? "Wyślij →" : "Resend →"}
+                        </div>
+                        {/* Actual row */}
+                        <div
+                          data-testid={`row-transaction-${tx.id}`}
+                          className={`flex items-center gap-4 p-5 hover:bg-secondary/50 transition-colors cursor-pointer group`}
+                          style={{
+                            transform: `translateX(${swipeX[tx.id] || 0}px)`,
+                            transition: (swipeX[tx.id] || 0) === 0 ? "transform 0.2s ease" : "none",
+                            background: "var(--color-card)",
+                            position: "relative",
+                            zIndex: 1,
+                          }}
+                          onClick={() => setLocation(`/transaction/${tx.id}`)}
+                          onTouchStart={e => { startX = e.touches[0].clientX; }}
+                          onTouchMove={e => {
+                            const dx = e.touches[0].clientX - startX;
+                            if (Math.abs(dx) > 10) setSwipeX(prev => ({ ...prev, [tx.id]: Math.max(-80, Math.min(80, dx)) }));
+                          }}
+                          onTouchEnd={() => {
+                            const dx = swipeX[tx.id] || 0;
+                            if (dx < -60) { setLocation(`/transfer/new?to=${encodeURIComponent(tx.subtitle)}`); }
+                            if (dx > 60) {
+                              const favs = JSON.parse(localStorage.getItem("finlys_fav_txs") || "[]");
+                              if (!favs.includes(tx.id)) { favs.push(tx.id); localStorage.setItem("finlys_fav_txs", JSON.stringify(favs)); }
+                            }
+                            setSwipeX(prev => ({ ...prev, [tx.id]: 0 }));
+                          }}
+                        >
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner-glow transition-colors ${tx.amount > 0 ? "bg-primary/10 text-primary border border-primary/20" : "bg-secondary text-foreground"}`}>
+                            {tx.amount > 0 ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <h4 className={`font-semibold text-[15px] truncate ${textPrimary}`}>{tx.title}</h4>
+                            <p className="text-[13px] text-muted-foreground truncate font-medium mt-1">{tx.subtitle}</p>
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            <div className={`font-semibold tracking-wide ${tx.amount > 0 ? "text-primary" : textPrimary}`}>
+                              {tx.amount > 0 ? "+" : ""}
+                              {tx.amount.toLocaleString(pl ? "pl-PL" : "en-US", { style: "currency", currency: "USD" })}
+                            </div>
+                            <div className="text-[12px] text-muted-foreground mt-1 font-medium uppercase tracking-wider">
+                              {new Date(tx.date).toLocaleDateString(pl ? "pl-PL" : "en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, TrendingUp, TrendingDown, Target, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,18 @@ import { useTheme } from "@/context/ThemeContext";
 
 export default function BudgetForecast() {
   const [, setLocation] = useLocation();
-  const { transactions, wallets, primaryCurrency } = useAppStore();
+  const { transactions, wallets, primaryCurrency, addNotification } = useAppStore();
   const { lang } = useLang();
   const { theme } = useTheme();
   const isLight = theme === "arctic-platinum";
   const textPrimary = isLight ? "text-gray-900" : "text-foreground/90";
   const pl = lang === "pl";
+
+  const [limits, setLimits] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem("finlys_budget_limits") || "{}"); } catch { return {}; }
+  });
+  const [editingLimit, setEditingLimit] = useState<string | null>(null);
+  const [limitInput, setLimitInput] = useState("");
 
   const now = new Date();
   const year = now.getFullYear();
@@ -86,6 +92,32 @@ export default function BudgetForecast() {
       };
     }).filter((_, i) => i % 5 === 0 || i === 0 || i === 29);
   }, [transactions, currentBalance, pl]);
+
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const spendingByCategory = useMemo(() => {
+    const map: Record<string, number> = {};
+    transactions.filter(tx => tx.amount < 0 && new Date(tx.date) >= monthStart).forEach(tx => {
+      const cat = tx.category || (pl ? "Inne" : "Other");
+      map[cat] = (map[cat] || 0) + Math.abs(tx.amount);
+    });
+    return map;
+  }, [transactions]);
+
+  const categories = Object.keys(spendingByCategory);
+
+  useEffect(() => {
+    categories.forEach(cat => {
+      if (!limits[cat]) return;
+      const pct = spendingByCategory[cat] / limits[cat];
+      if (pct >= 0.8) {
+        const alertKey = `budget_alert_${cat}_${now.getMonth()}`;
+        if (!sessionStorage.getItem(alertKey)) {
+          addNotification({ title: pl ? "Limit budżetu" : "Budget limit", message: pl ? `Kategoria "${cat}": ${Math.round(pct * 100)}% limitu wykorzystane` : `Category "${cat}": ${Math.round(pct * 100)}% of limit used`, type: "alert", category: "payment", priority: "high" });
+          sessionStorage.setItem(alertKey, "1");
+        }
+      }
+    });
+  }, [spendingByCategory]);
 
   const fmt = (n: number) =>
     n.toLocaleString(pl ? "pl-PL" : "en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -321,6 +353,57 @@ export default function BudgetForecast() {
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>{pl ? "Teraz" : "Now"}: <b style={{ color: "var(--color-primary)" }}>{currentBalance.toFixed(0)} {primaryCurrency}</b></div>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>+30d: <b style={{ color: forecastData[forecastData.length - 1]?.balance >= currentBalance ? "#4ade80" : "#f87171" }}>{forecastData[forecastData.length - 1]?.balance ?? 0} {primaryCurrency}</b></div>
           </div>
+        </div>
+
+        {/* Budget Limits */}
+        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, padding: 20, marginTop: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.2, color: "rgba(255,255,255,0.45)", marginBottom: 16 }}>
+            {pl ? "LIMITY BUDŻETU" : "BUDGET LIMITS"}
+          </div>
+          {categories.length === 0 && (
+            <div style={{ color: "rgba(255,255,255,0.40)", fontSize: 13, textAlign: "center", padding: "12px 0" }}>
+              {pl ? "Brak transakcji w tym miesiącu" : "No transactions this month"}
+            </div>
+          )}
+          {categories.map(cat => {
+            const spent = spendingByCategory[cat];
+            const limit = limits[cat] || 0;
+            const pct = limit > 0 ? Math.min(1, spent / limit) : 0;
+            const isOver = limit > 0 && spent > limit;
+            const isWarn = limit > 0 && pct >= 0.8 && !isOver;
+            return (
+              <div key={cat} style={{ marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-foreground)" }}>{cat}</div>
+                  <div style={{ fontSize: 13, color: isOver ? "#f87171" : isWarn ? "#fbbf24" : "rgba(255,255,255,0.55)" }}>
+                    {spent.toFixed(0)} {limit > 0 ? `/ ${limit.toFixed(0)} PLN` : "PLN"}
+                  </div>
+                </div>
+                {limit > 0 && (
+                  <div style={{ height: 6, background: "rgba(255,255,255,0.08)", borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${pct * 100}%`, background: isOver ? "#f87171" : isWarn ? "#fbbf24" : "var(--color-primary)", borderRadius: 3, transition: "width 0.3s ease" }} />
+                  </div>
+                )}
+                {editingLimit === cat ? (
+                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                    <input type="number" value={limitInput} onChange={e => setLimitInput(e.target.value)} placeholder="Limit PLN" style={{ flex: 1, height: 36, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "var(--color-foreground)", fontSize: 13, padding: "0 10px", outline: "none" }} />
+                    <button onClick={() => {
+                      const newLimits = { ...limits, [cat]: parseFloat(limitInput) || 0 };
+                      setLimits(newLimits);
+                      localStorage.setItem("finlys_budget_limits", JSON.stringify(newLimits));
+                      setEditingLimit(null);
+                    }} style={{ height: 36, borderRadius: 8, padding: "0 14px", background: "var(--color-primary)", border: "none", color: "var(--color-primary-foreground)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                      {pl ? "Zapisz" : "Save"}
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => { setEditingLimit(cat); setLimitInput(String(limit || "")); }} style={{ marginTop: 4, fontSize: 12, color: "var(--color-primary)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                    {limit > 0 ? (pl ? "Zmień limit" : "Change limit") : (pl ? "+ Ustaw limit" : "+ Set limit")}
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       </main>
     </div>

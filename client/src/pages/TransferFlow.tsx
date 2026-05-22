@@ -375,6 +375,9 @@ function SandboxPinScreen({ onConfirm, onBack }: { onConfirm: () => void; onBack
 // ── BANK TRANSFER FORM ─────────────────────────────────────────────────────────
 function BankTransferFlow({ user, onBack, pinEnabled, pinSettingsLoaded }: { user: User | null; onBack: () => void; pinEnabled: boolean; pinSettingsLoaded: boolean }) {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const { lang } = useLang();
+  const pl = lang === "pl";
   const [step, setStep] = useState<"form"|"confirm"|"success"|"error">("form");
   const [currency, setCurrency] = useState<CurrencyCode>("NOK");
   const [reference, setReference] = useState("");
@@ -401,6 +404,10 @@ function BankTransferFlow({ user, onBack, pinEnabled, pinSettingsLoaded }: { use
   const handleSubmit = () => { if (validate()) setStep("confirm"); };
 
   const handleConfirm = async (pinToken?: string) => {
+    if (localStorage.getItem("finlys_frozen") === "true") {
+      toast({ title: pl ? "Konto zamrożone" : "Account frozen", description: pl ? "Konto jest zamrożone. Przejdź do Bezpieczeństwo aby odblokować." : "Account is frozen. Go to Security to unfreeze.", variant: "destructive" });
+      return;
+    }
     if (Number(f.amount) >= 100 && pinEnabled && !pinToken) {
       setShowPinGate(true);
       return;
@@ -560,6 +567,9 @@ function BankTransferFlow({ user, onBack, pinEnabled, pinSettingsLoaded }: { use
 // ── CARD PAYOUT FORM ───────────────────────────────────────────────────────────
 function CardPayoutFlow({ user, onBack, pinEnabled, pinSettingsLoaded }: { user: User | null; onBack: () => void; pinEnabled: boolean; pinSettingsLoaded: boolean }) {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const { lang } = useLang();
+  const pl = lang === "pl";
   const [step, setStep] = useState<"form"|"confirm"|"success"|"error">("form");
   const [currency, setCurrency] = useState<CurrencyCode>("NOK");
   const [reference, setReference] = useState("");
@@ -582,6 +592,10 @@ function CardPayoutFlow({ user, onBack, pinEnabled, pinSettingsLoaded }: { user:
   };
 
   const handleConfirm = async (pinToken?: string) => {
+    if (localStorage.getItem("finlys_frozen") === "true") {
+      toast({ title: pl ? "Konto zamrożone" : "Account frozen", description: pl ? "Konto jest zamrożone. Przejdź do Bezpieczeństwo aby odblokować." : "Account is frozen. Go to Security to unfreeze.", variant: "destructive" });
+      return;
+    }
     if (Number(f.amount) >= 100 && pinEnabled && !pinToken) {
       setShowPinGate(true);
       return;
@@ -691,6 +705,9 @@ function CardPayoutFlow({ user, onBack, pinEnabled, pinSettingsLoaded }: { user:
 // ── PHONE TRANSFER FORM ────────────────────────────────────────────────────────
 function PhoneTransferFlow({ user, onBack, pinEnabled, pinSettingsLoaded }: { user: User | null; onBack: () => void; pinEnabled: boolean; pinSettingsLoaded: boolean }) {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const { lang } = useLang();
+  const pl = lang === "pl";
   const [step, setStep] = useState<"form"|"confirm"|"success"|"error">("form");
   const [currency, setCurrency] = useState<CurrencyCode>("NOK");
   const [reference, setReference] = useState("");
@@ -734,6 +751,10 @@ function PhoneTransferFlow({ user, onBack, pinEnabled, pinSettingsLoaded }: { us
   };
 
   const handleConfirm = async (pinToken?: string) => {
+    if (localStorage.getItem("finlys_frozen") === "true") {
+      toast({ title: pl ? "Konto zamrożone" : "Account frozen", description: pl ? "Konto jest zamrożone. Przejdź do Bezpieczeństwo aby odblokować." : "Account is frozen. Go to Security to unfreeze.", variant: "destructive" });
+      return;
+    }
     if (Number(f.amount) >= 100 && pinEnabled && !pinToken) {
       setShowPinGate(true);
       return;
@@ -866,7 +887,8 @@ export default function TransferFlow() {
   const { user, sendMoney, wallets, sessionConfirmed } = useAppStore();
   const { toast } = useToast();
   const { th } = useTheme();
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const pl = lang === "pl";
 
   const [amount, setAmount] = useState("0");
   const [step, setStep] = useState<"amount" | "confirm" | "success">("amount");
@@ -948,6 +970,10 @@ export default function TransferFlow() {
   };
 
   const handleConfirm = async (riskAck = false, pinToken?: string) => {
+    if (localStorage.getItem("finlys_frozen") === "true") {
+      toast({ title: pl ? "Konto zamrożone" : "Account frozen", description: pl ? "Konto jest zamrożone. Przejdź do Bezpieczeństwo aby odblokować." : "Account is frozen. Go to Security to unfreeze.", variant: "destructive" });
+      return;
+    }
     const numAmount = parseFloat(amount);
     if (numAmount >= 100 && pinEnabled && !pinToken) {
       peerRiskAcknowledged.current = riskAck;
