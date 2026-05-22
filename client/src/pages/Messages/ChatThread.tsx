@@ -287,7 +287,8 @@ export default function ChatThread() {
   const [, setLocation] = useLocation();
   const { id } = useParams<{ id: string }>();
   const { user, sessionConfirmed, isFriend, addFriend, removeFriend } = useAppStore();
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const pl = lang === "pl";
 
   // ── Core state ────────────────────────────────────────────────────────────
   const [meta, setMeta] = useState<ConvMeta | null>(null);
@@ -327,6 +328,13 @@ export default function ChatThread() {
   const [reportReason, setReportReason] = useState("");
   const [reportLoading, setReportLoading] = useState(false);
   const [blockLoading, setBlockLoading] = useState(false);
+
+  // ── Pinned message state ──────────────────────────────────────────────────
+  const [pinnedMessage, setPinnedMessage] = useState<{ id: string; text: string } | null>(() => {
+    try { return JSON.parse(localStorage.getItem(`finlys_pinned_${id}`) || "null"); }
+    catch { return null; }
+  });
+  const [contextMenu, setContextMenu] = useState<{ msgId: string; text: string } | null>(null);
 
   // ── Search state ──────────────────────────────────────────────────────────
   const [searchOpen, setSearchOpen] = useState(false);
@@ -1072,8 +1080,36 @@ export default function ChatThread() {
             </div>
           </div>
          </div>
-         {/* NEW_CHAT_TOP_CREATED_END */}         
+         {/* NEW_CHAT_TOP_CREATED_END */}
       {/* NEW_CHAT_TOP_CREATED_END */}
+
+      {/* Pinned message indicator */}
+      {pinnedMessage && (
+        <div style={{ background: "rgba(212,160,32,0.12)", border: "1px solid rgba(212,160,32,0.25)", borderRadius: 10, padding: "8px 12px", margin: "0 16px 8px", display: "flex", alignItems: "center", gap: 8, zIndex: 40, position: "relative" }}>
+          <span style={{ fontSize: 14 }}>📌</span>
+          <div style={{ flex: 1, fontSize: 13, color: "rgba(255,255,255,0.70)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pinnedMessage.text}</div>
+          <button onClick={() => { setPinnedMessage(null); localStorage.removeItem(`finlys_pinned_${id}`); }} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.35)", fontSize: 16, padding: 0 }}>×</button>
+        </div>
+      )}
+
+      {/* Context menu overlay */}
+      {contextMenu && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 60 }} onClick={() => setContextMenu(null)}>
+          <div style={{ position: "absolute", bottom: 100, left: "50%", transform: "translateX(-50%)", background: "var(--color-card)", borderRadius: 16, overflow: "hidden", minWidth: 160, border: "1px solid rgba(255,255,255,0.12)" }}>
+            <div
+              onClick={() => {
+                setPinnedMessage({ id: contextMenu.msgId, text: contextMenu.text });
+                localStorage.setItem(`finlys_pinned_${id}`, JSON.stringify({ id: contextMenu.msgId, text: contextMenu.text }));
+                setContextMenu(null);
+              }}
+              style={{ padding: "14px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
+            >
+              📌 {pl ? "Przypnij wiadomość" : "Pin message"}
+            </div>
+          </div>
+        </div>
+      )}
+
 <main ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-4 py-4 pb-4 space-y-6 scroll-smooth touch-pan-y overscroll-contain">
         {/* Encryption note */}
         <div className="text-center py-4 px-4">
@@ -1178,6 +1214,8 @@ export default function ChatThread() {
                   )}
                   <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 flex flex-col gap-1 ${own ? "bg-primary/20 border border-primary/30 rounded-br-sm" : "bg-card border border-border rounded-bl-sm"}`}
                     data-testid={`bubble-msg-${msg.id}`}
+                    onContextMenu={e => { e.preventDefault(); if (msg.text) setContextMenu({ msgId: msg.id, text: msg.text }); }}
+                    onTouchStart={(() => { let t: ReturnType<typeof setTimeout>; return () => { t = setTimeout(() => { if (msg.text) setContextMenu({ msgId: msg.id, text: msg.text }); }, 500); return () => clearTimeout(t); }; })()}
                   >
                     {/* Image attachment */}
                     {isImage && msg.attachment && (

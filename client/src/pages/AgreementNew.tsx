@@ -547,6 +547,36 @@ function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContr
         </div>
       </div>
 
+      {/* My Templates */}
+      {(() => {
+        try {
+          const myTemplates = JSON.parse(localStorage.getItem("finlys_my_templates") || "[]");
+          if (!myTemplates.length) return null;
+          return (
+            <div style={{ marginTop: 20, marginBottom: 20 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.4, color: "rgba(255,255,255,0.40)", marginBottom: 10 }}>
+                MOJE SZABLONY
+              </div>
+              <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }} className="scrollbar-hide">
+                {myTemplates.map((t: any) => (
+                  <div
+                    key={t.id}
+                    onClick={() => {
+                      onTemplate(t.preset || {});
+                    }}
+                    style={{ flexShrink: 0, width: 130, borderRadius: 14, padding: "14px 12px", background: "rgba(255,255,255,0.04)", border: "1.5px solid rgba(212,160,32,0.20)", cursor: "pointer" }}
+                  >
+                    <div style={{ fontSize: 24, marginBottom: 6 }}>{t.emoji}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-foreground)", marginBottom: 3 }}>{t.label}</div>
+                    {t.desc && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.40)" }}>{t.desc}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        } catch { return null; }
+      })()}
+
       {/* Search + filter */}
       {contracts.length > 0 && (
         <div style={{ marginBottom: 14 }}>
@@ -3997,6 +4027,19 @@ function ContractLifecycle({
     }
   }, [phase, data.deadlineSingle, data.deadlineTo]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Cyclic payment reminder
+  useEffect(() => {
+    if (data.deadlineType !== "cyclic" || !data.cyclicInterval || !data.cyclicUnit) return;
+    if (phase === "completed") return;
+    const today = new Date();
+    const reminderKey = `cyclic_reminder_${contractId}_${today.toISOString().slice(0, 7)}`;
+    if (!sessionStorage.getItem(reminderKey)) {
+      const unitLabel = ({ days: "dni", weeks: "tygodni", months: "miesięcy" } as Record<string, string>)[data.cyclicUnit] || data.cyclicUnit;
+      addContractEvent(contractId, { type: "note", icon: "🔄", label: `🔄 Cykliczne przypomnienie: kolejna płatność co ${data.cyclicInterval} ${unitLabel}` });
+      sessionStorage.setItem(reminderKey, "1");
+    }
+  }, [phase, data.deadlineType]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const savePaymentSent = () => {
     const ts = new Date().toISOString();
     try {
@@ -4768,6 +4811,34 @@ function ContractLifecycle({
           </button>
           <button onClick={onNewContract} style={{ ...btnSecondary, width: "100%", padding: "14px" }}>
             + Nowa umowa od zera
+          </button>
+          <button
+            onClick={() => {
+              try {
+                const templates = JSON.parse(localStorage.getItem("finlys_my_templates") || "[]");
+                const newTemplate = {
+                  id: Date.now().toString(),
+                  emoji: ({ usluga: "💼", remont: "🔨", sprzedaz: "🛒", wynajem: "🏠", wypozyczenie: "📦", wlasna: "📝" } as Record<string, string>)[data.category] || "📄",
+                  label: data.customTitle || data.subcategory || data.category || "Szablon",
+                  desc: (data.scopeDescription || "").slice(0, 60),
+                  savedAt: new Date().toISOString(),
+                  preset: {
+                    category: data.category,
+                    subcategory: data.subcategory,
+                    pricingMethod: data.pricingMethod,
+                    basePrice: data.basePrice,
+                    currency: data.currency,
+                    paymentMethod: data.paymentMethod,
+                  }
+                };
+                templates.unshift(newTemplate);
+                localStorage.setItem("finlys_my_templates", JSON.stringify(templates.slice(0, 20)));
+                addContractEvent(contractId, { type: "note", icon: "💾", label: "Zapisano umowę jako szablon" });
+              } catch {}
+            }}
+            style={{ ...btnSecondary, width: "100%", padding: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+          >
+            💾 Zapisz jako szablon
           </button>
         </div>
       )}

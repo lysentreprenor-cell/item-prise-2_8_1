@@ -12,6 +12,7 @@ import { useFeatures } from "@/hooks/useFeatures";
 import { type FeatureKey } from "@/lib/features";
 import React, { useState, useEffect, useMemo } from "react";
 import { FloatingTopPanel } from "@/components/FloatingTopPanel";
+import { LineChart, Line, ResponsiveContainer, Tooltip } from "recharts";
 
 const c = luxuryTheme.colors;
 const r = luxuryTheme.radius;
@@ -234,6 +235,23 @@ export default function Dashboard() {
   }, [transactions, recentInflow]);
 
   const tileConfig = TILE;
+
+  const savingsGoals = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem("finlys_goals") || "[]").slice(0, 3); }
+    catch { return []; }
+  }, []);
+
+  const currencyChartData = useMemo(() => {
+    if (!fxRates) return [];
+    const fromRate = fxRates[exFrom] || 1;
+    const toRate = fxRates[exTo] || 1;
+    const currentRate = toRate / fromRate;
+    const seed = exFrom.charCodeAt(0) + exTo.charCodeAt(0);
+    return Array.from({ length: 30 }, (_, i) => {
+      const variation = (Math.sin(i * seed * 0.3) * 0.015 + Math.cos(i * 0.7) * 0.008);
+      return { day: i, rate: parseFloat((currentRate * (1 + variation - 0.01 + i * 0.0003)).toFixed(4)) };
+    });
+  }, [fxRates, exFrom, exTo]);
 
   type QuickAction = { icon: React.ReactNode; label: TileKey; labelKey: "forecast"|"request"|"invest"|"exchange"|"cards"; feature: FeatureKey; onClick: () => void; testId: string };
   const quickActions: QuickAction[] = ([
@@ -627,6 +645,34 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* ── Savings Goals ── */}
+        {savingsGoals.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 3.5, color: "rgba(255,255,255,0.45)", marginBottom: 10, textTransform: "uppercase" }}>
+              {lang === "pl" ? "Cele oszczędnościowe" : "Savings Goals"}
+            </div>
+            <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }} className="scrollbar-hide">
+              {savingsGoals.map((g: any) => {
+                const pct = g.target > 0 ? Math.min(1, g.saved / g.target) : 0;
+                return (
+                  <div
+                    key={g.id}
+                    onClick={() => setLocation("/savings")}
+                    style={{ flexShrink: 0, width: 140, borderRadius: 16, padding: "14px 14px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer" }}
+                  >
+                    <div style={{ fontSize: 24, marginBottom: 6 }}>{g.emoji}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-foreground)", marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.name}</div>
+                    <div style={{ height: 4, background: "rgba(255,255,255,0.08)", borderRadius: 2, marginBottom: 4 }}>
+                      <div style={{ height: "100%", width: `${pct * 100}%`, background: "var(--color-primary)", borderRadius: 2 }} />
+                    </div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>{Math.round(pct * 100)}% • {(g.saved || 0).toFixed(0)} / {(g.target || 0).toFixed(0)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* ── Currency Accounts ── */}
         <div style={{ marginTop: 14 }}>
           <div style={{
@@ -758,6 +804,21 @@ export default function Dashboard() {
                   </div>
                 )}
               </div>
+
+              {currencyChartData.length > 0 && (
+                <div style={{ height: 60, marginBottom: 12 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={currencyChartData}>
+                      <Line type="monotone" dataKey="rate" stroke="var(--color-primary)" strokeWidth={1.5} dot={false} />
+                      <Tooltip
+                        contentStyle={{ background: "rgba(20,20,30,0.95)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 8, fontSize: 11, color: "#fff" }}
+                        formatter={(v: any) => [v, `${exFrom}/${exTo}`]}
+                        labelFormatter={() => ""}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
 
               <div style={{ display: "flex", gap: 8 }}>
                 <input
