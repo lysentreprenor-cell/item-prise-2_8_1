@@ -1,5 +1,6 @@
+import { useState, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, CreditCard, ArrowRightLeft, MessageSquare, FileText } from "lucide-react";
+import { Home, CreditCard, ArrowRightLeft, MessageSquare, FileText, Eye, EyeOff, Search } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { useTheme } from "@/context/ThemeContext";
 import { useLang } from "@/context/LanguageContext";
@@ -7,24 +8,37 @@ import { useFeatures } from "@/hooks/useFeatures";
 import { useMessageBadge } from "@/context/MessageBadgeContext";
 
 export function BottomNav() {
-  const [location] = useLocation();
-  const { user } = useAppStore();
+  const [location, setLocation] = useLocation();
+  const { user, stealthMode, toggleStealthMode } = useAppStore();
   const { th } = useTheme();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { isEnabled } = useFeatures();
   const { unreadCount } = useMessageBadge();
+  const pl = lang === "pl";
 
-  if (!user || location === "/auth" || location === "/transfer" || location === "/transfer/new" || location === "/wallet/top-up" || location === "/agreements/new" || location.startsWith("/messages/") || location === "/split" || location === "/recurring" || location === "/savings" || location === "/kyc" || location === "/referral") return null;
+  const [speedDialOpen, setSpeedDialOpen] = useState(false);
+  const pressStartRef = useRef<number>(0);
+
+  if (!user || location === "/auth" || location === "/transfer" || location === "/transfer/new" || location === "/wallet/top-up" || location === "/agreements/new" || location.startsWith("/messages/") || location === "/split" || location === "/recurring" || location === "/savings" || location === "/kyc" || location === "/referral" || location === "/search" || location.startsWith("/u/")) return null;
 
   const isHome  = location === "/";
   const isCards = location === "/cards";
   const isMsgs  = location === "/messages";
   const isAgree = location === "/agreements" || location.startsWith("/agreements/");
+  const isSearch = location === "/search";
 
   const homeActiveColor  = th.primary;
   const cardsActiveColor = th.tabCards;
   const msgsActiveColor  = th.tabMessages;
   const agreeActiveColor = th.tabAgreements;
+
+  const handleOrbPointerDown = () => {
+    pressStartRef.current = Date.now();
+  };
+
+  const handleOrbPointerUp = () => {
+    setSpeedDialOpen(v => !v);
+  };
 
   return (
     <div style={{
@@ -35,6 +49,28 @@ export function BottomNav() {
       zIndex: 50, pointerEvents: "none",
       transition: "background 0.5s ease",
     }}>
+      {/* Speed dial overlay */}
+      {speedDialOpen && (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 39 }} onClick={() => setSpeedDialOpen(false)} />
+          <div style={{ position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)", zIndex: 40, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+            {[
+              { icon: "↑", label: pl ? "Wyślij" : "Send", route: "/transfer" },
+              { icon: "↓", label: pl ? "Odbierz" : "Request", route: "/transfer?mode=request" },
+              { icon: "÷", label: pl ? "Podziel" : "Split", route: "/split" },
+              { icon: "📄", label: pl ? "Umowa" : "Contract", route: "/agreements/new" },
+            ].map((item, i) => (
+              <div key={i} onClick={() => { setLocation(item.route); setSpeedDialOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.70)" }}>{item.label}</span>
+                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--color-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "var(--color-primary-foreground)", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}>
+                  {item.icon}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
       <nav style={{
         width: "100%", borderRadius: 999, padding: "12px 20px",
         background: th.navBg,
@@ -47,7 +83,7 @@ export function BottomNav() {
           "0 12px 48px rgba(0,0,0,0.65)",
           "0 4px 16px rgba(0,0,0,0.45)",
         ].join(", "),
-        position: "relative", overflow: "hidden",
+        position: "relative", overflow: "visible",
         transition: "background 0.5s ease, border-color 0.5s ease",
       }}>
         {/* top glint */}
@@ -56,6 +92,11 @@ export function BottomNav() {
           background: `linear-gradient(90deg, transparent, ${th.navGlint}, transparent)`,
           pointerEvents: "none",
         }} />
+
+        {/* Stealth mode toggle */}
+        <button onClick={toggleStealthMode} style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: 6, zIndex: 2 }}>
+          {stealthMode ? <EyeOff size={16} style={{ color: "rgba(255,255,255,0.40)" }} /> : <Eye size={16} style={{ color: "rgba(255,255,255,0.25)" }} />}
+        </button>
 
         {/* HOME */}
         {isEnabled("dashboard") ? (
@@ -84,58 +125,55 @@ export function BottomNav() {
           </Link>
         ) : <div />}
 
-        {/* CARDS */}
-        {isEnabled("cards") ? (
-          <Link href="/cards">
-            <a
-              data-testid="nav-cards"
-              style={{
-                display: "grid", justifyItems: "center", gap: 4,
-                cursor: "pointer", textDecoration: "none",
-                fontSize: 15, fontWeight: 800, letterSpacing: 1.2,
-              }}
-            >
-              <div style={{
-                width: 36, height: 36, borderRadius: 12,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: isCards ? `${th.tabCards}1e` : "transparent",
-                boxShadow: isCards
-                  ? `0 0 14px ${th.tabCards}38, inset 0 1px 0 rgba(255,255,255,0.07)`
-                  : "none",
-                transition: "all 0.2s",
-              }}>
-                <CreditCard size={19} style={{ color: isCards ? cardsActiveColor : th.textMuted }} />
-              </div>
-              <span style={{ color: isCards ? cardsActiveColor : th.textMuted, fontSize: 11, letterSpacing: 1.0 }}>
-                {t.cards}
-              </span>
-            </a>
-          </Link>
-        ) : <div />}
+        {/* SEARCH */}
+        <a
+          data-testid="nav-search"
+          onClick={() => setLocation("/search")}
+          style={{
+            display: "grid", justifyItems: "center", gap: 4,
+            cursor: "pointer", textDecoration: "none",
+            fontSize: 15, fontWeight: 800, letterSpacing: 1.2,
+          }}
+        >
+          <div style={{
+            width: 36, height: 36, borderRadius: 12,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: isSearch ? `${th.primary}1e` : "transparent",
+            boxShadow: isSearch ? `0 0 14px ${th.primary}38, inset 0 1px 0 rgba(255,255,255,0.07)` : "none",
+            transition: "all 0.2s",
+          }}>
+            <Search size={19} style={{ color: isSearch ? th.primary : th.textMuted }} />
+          </div>
+          <span style={{ color: isSearch ? th.primary : th.textMuted, fontSize: 11, letterSpacing: 1.0 }}>
+            {pl ? "Szukaj" : "Search"}
+          </span>
+        </a>
 
         {/* Transfer — themed orb (center) */}
         {isEnabled("transfer") ? (
-          <Link href="/transfer">
-            <a
-              data-testid="nav-transfer"
-              style={{
-                width: 68, height: 68, borderRadius: "50%",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: th.orbColor,
-                background: th.orbBg,
-                boxShadow: th.orbShadow,
-                textDecoration: "none", position: "relative", overflow: "hidden",
-                transition: "background 0.5s ease, box-shadow 0.5s ease",
-              }}
-            >
-              <div style={{
-                position: "absolute", top: 0, left: "20%", right: "20%", height: "42%",
-                background: "linear-gradient(180deg, rgba(255,255,255,0.28) 0%, transparent 100%)",
-                borderRadius: "0 0 50% 50%", pointerEvents: "none",
-              }} />
-              <ArrowRightLeft size={22} />
-            </a>
-          </Link>
+          <div
+            data-testid="nav-transfer"
+            onPointerDown={handleOrbPointerDown}
+            onPointerUp={handleOrbPointerUp}
+            style={{
+              width: 68, height: 68, borderRadius: "50%",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: th.orbColor,
+              background: th.orbBg,
+              boxShadow: th.orbShadow,
+              textDecoration: "none", position: "relative", overflow: "hidden",
+              transition: "background 0.5s ease, box-shadow 0.5s ease, transform 0.3s ease",
+              cursor: "pointer",
+              transform: speedDialOpen ? "rotate(45deg)" : "rotate(0deg)",
+            }}
+          >
+            <div style={{
+              position: "absolute", top: 0, left: "20%", right: "20%", height: "42%",
+              background: "linear-gradient(180deg, rgba(255,255,255,0.28) 0%, transparent 100%)",
+              borderRadius: "0 0 50% 50%", pointerEvents: "none",
+            }} />
+            <ArrowRightLeft size={22} />
+          </div>
         ) : <div style={{ width: 68 }} />}
 
         {/* MESSAGES */}

@@ -63,6 +63,7 @@ export type UserSettings = {
   emailDigest: boolean;
   biometricLogin: boolean;
   hideBalances: boolean;
+  stealthMode?: boolean;
   appearance?: "black-gold" | "ice-silver" | "emerald-gold" | "royal-violet" | "obsidian-gold" | "arctic-platinum" | "graphite-emerald";
   cardLimits?: {
     daily: number;
@@ -247,6 +248,8 @@ type AppState = {
   isAuthenticated: boolean;
   authLoading: boolean;
   sessionConfirmed: boolean;
+  stealthMode: boolean;
+  toggleStealthMode: () => void;
   transactions: Transaction[];
   notifications: Notification[];
   conversations: Conversation[];
@@ -401,6 +404,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [fxRates, setFxRates] = useState<Record<CurrencyCode, number>>({ ...FX_RATES });
   const [ratesUpdatedAt, setRatesUpdatedAt] = useState<string | null>(null);
   const [ratesUnavailable, setRatesUnavailable] = useState(false);
+  const [stealthMode, setStealthMode] = useState<boolean>(() => {
+    try { return localStorage.getItem("finlys_stealth_mode") === "true"; } catch { return false; }
+  });
+
+  const toggleStealthMode = () => {
+    setStealthMode(prev => {
+      const next = !prev;
+      try { localStorage.setItem("finlys_stealth_mode", String(next)); } catch {}
+      return next;
+    });
+  };
 
   const refreshRates = async () => {
     try {
@@ -1123,7 +1137,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      user, isAuthenticated, authLoading, sessionConfirmed, transactions, notifications, conversations, contacts, supportTickets,
+      user, isAuthenticated, authLoading, sessionConfirmed, stealthMode, toggleStealthMode, transactions, notifications, conversations, contacts, supportTickets,
       wallets, exchangeCurrency, depositToWallet,
       login, logout, sendMoney, addMoney, updateSettings, updateUser,
       markAsRead, markAllAsRead, removeNotification, addNotification, sendMessage, markConversationRead,
