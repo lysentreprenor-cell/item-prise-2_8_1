@@ -56,6 +56,8 @@ import RecurringPayments from "@/pages/RecurringPayments";
 import SavingsGoals from "@/pages/SavingsGoals";
 import KYCVerification from "@/pages/KYCVerification";
 import ReferralProgram from "@/pages/ReferralProgram";
+import GlobalSearch from "@/pages/GlobalSearch";
+import PublicProfile from "@/pages/PublicProfile";
 
 function AuthSplash() {
   return (
@@ -158,6 +160,8 @@ function Router() {
         <Route path="/kyc" component={KYCVerification} />
         <Route path="/referral" component={ReferralProgram} />
         <Route path="/verify-email" component={VerifyEmail} />
+        <Route path="/search" component={GlobalSearch} />
+        <Route path="/u/:handle" component={PublicProfile} />
         <Route component={NotFound} />
       </Switch>
       <BottomNav />
