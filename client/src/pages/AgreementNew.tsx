@@ -3959,6 +3959,44 @@ function ContractLifecycle({
   });
   const [inlineRatingNote, setInlineRatingNote] = useState("");
 
+  // Feature 5 — request notification permission when contract is active
+  useEffect(() => {
+    if (phase !== "completed" && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Feature 5 — auto deadline reminder notification
+  useEffect(() => {
+    if (!data.deadlineSingle && !data.deadlineTo) return;
+    if (phase === "completed") return;
+
+    const deadline = data.deadlineSingle || data.deadlineTo;
+    if (!deadline) return;
+
+    const deadlineDate = new Date(deadline);
+    const now = new Date();
+    const daysLeft = Math.ceil((deadlineDate.getTime() - now.getTime()) / 86400000);
+
+    if (daysLeft <= 3 && daysLeft >= 0) {
+      if ("Notification" in window && Notification.permission === "granted") {
+        const reminderKey = `reminder_shown_${deadline}`;
+        if (!sessionStorage.getItem(reminderKey)) {
+          setTimeout(() => {
+            new Notification("Zbliżający się termin", {
+              body: `Termin umowy za ${daysLeft} ${daysLeft === 1 ? "dzień" : "dni"}`,
+              icon: "/icons/icon-192.png",
+            });
+            sessionStorage.setItem(reminderKey, "1");
+          }, 2000);
+        }
+      }
+      if (daysLeft <= 1) {
+        addContractEvent(contractId, { type: "note", icon: "⚠️", label: `⚠️ Termin umowy ${daysLeft === 0 ? "dzisiaj" : "jutro"}!` });
+      }
+    }
+  }, [phase, data.deadlineSingle, data.deadlineTo]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const savePaymentSent = () => {
     const ts = new Date().toISOString();
     try {
@@ -4631,6 +4669,57 @@ function ContractLifecycle({
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Feature 4 — Contractor rating */}
+      {isFinished && !inlineRatingSubmitted && (
+        <div style={{ background: "rgba(212,160,32,0.06)", border: "1.5px solid rgba(212,160,32,0.25)", borderRadius: 16, padding: 20, marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--color-foreground)", marginBottom: 4 }}>
+            ⭐ Oceń współpracę
+          </div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.50)", marginBottom: 16 }}>
+            Jak oceniasz współpracę z {otherParty.name || invited}?
+          </div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+            {[1, 2, 3, 4, 5].map(star => (
+              <div
+                key={star}
+                onClick={() => setInlineRating(star)}
+                style={{ fontSize: 28, cursor: "pointer", transition: "transform 0.1s", transform: inlineRating >= star ? "scale(1.15)" : "scale(1)", filter: inlineRating >= star ? "brightness(1.2)" : "grayscale(1) opacity(0.4)" }}
+              >
+                ⭐
+              </div>
+            ))}
+          </div>
+          <textarea
+            value={inlineRatingNote}
+            onChange={e => setInlineRatingNote(e.target.value)}
+            placeholder="Opcjonalny komentarz..."
+            rows={2}
+            style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "8px 12px", color: "var(--color-foreground)", fontSize: 13, resize: "none", outline: "none", marginBottom: 12, fontFamily: "inherit", boxSizing: "border-box" }}
+          />
+          <button
+            disabled={inlineRating === 0}
+            onClick={() => {
+              const ratings = JSON.parse(localStorage.getItem("finlys_ratings") || "[]");
+              ratings.push({ contractId, rating: inlineRating, note: inlineRatingNote, ratedUser: otherParty.name || invited, date: new Date().toISOString() });
+              localStorage.setItem("finlys_ratings", JSON.stringify(ratings));
+              setInlineRatingSubmitted(true);
+            }}
+            style={{
+              width: "100%", height: 44, borderRadius: 12, background: inlineRating > 0 ? "var(--color-primary)" : "rgba(255,255,255,0.06)",
+              color: inlineRating > 0 ? "var(--color-primary-foreground, #fff)" : "rgba(255,255,255,0.30)",
+              fontWeight: 700, fontSize: 14, border: "none", cursor: inlineRating > 0 ? "pointer" : "not-allowed",
+            }}
+          >
+            Wyślij ocenę
+          </button>
+        </div>
+      )}
+      {isFinished && inlineRatingSubmitted && (
+        <div style={{ textAlign: "center", padding: "12px 0", color: "rgba(255,255,255,0.45)", fontSize: 13, marginBottom: 8 }}>
+          ✓ Ocena wysłana — dziękujemy!
         </div>
       )}
 
