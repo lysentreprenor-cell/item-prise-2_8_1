@@ -447,6 +447,9 @@ function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContr
   const needAction = contracts.filter(c => c.phase === "awaiting_release").length;
   const currency = contracts[0]?.data.currency || "PLN";
   const usedCategories = Array.from(new Set(contracts.map(c => c.data.category)));
+
+  // Deadline helpers
+  const today = new Date(); today.setHours(0, 0, 0, 0);
   const overdueContracts = contracts.filter(c => {
     if (c.phase === "completed") return false;
     const d = c.data.category === "wypozyczenie" ? c.data.loanReturnDate : c.data.deadlineSingle;
@@ -454,9 +457,6 @@ function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContr
     const dl = new Date(d); dl.setHours(0, 0, 0, 0);
     return dl < today;
   });
-
-  // Deadline helpers
-  const today = new Date(); today.setHours(0, 0, 0, 0);
   const deadlineBadge = (c: SavedContract): "overdue" | "soon" | null => {
     const d = c.data.category === "wypozyczenie" ? c.data.loanReturnDate : c.data.deadlineSingle;
     if (!d || c.phase === "completed") return null;
