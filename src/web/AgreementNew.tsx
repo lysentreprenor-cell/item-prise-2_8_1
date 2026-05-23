@@ -394,6 +394,22 @@ const TEMPLATES: { id: string; icon: string; label: string; desc: string; preset
     id: "wlasna", icon: "📝", label: "Własna umowa", desc: "Dowolne warunki i treść",
     preset: { category: "wlasna", pricingMethod: "value" },
   },
+  {
+    id: "pozyczka", icon: "💰", label: "Pożyczka", desc: "Między znajomymi i rodziną",
+    preset: { category: "pozyczka", subcategory: "Między znajomymi", pricingMethod: "total", latePenalty: true, latePenaltyAmount: 50 },
+  },
+  {
+    id: "korepetycje", icon: "📚", label: "Korepetycje", desc: "Nauczanie prywatne, kursy",
+    preset: { category: "korepetycje", subcategory: "Matematyka", pricingMethod: "hourly", warranty: false },
+  },
+  {
+    id: "opieka", icon: "🐾", label: "Opieka", desc: "Zwierzę, dziecko, pomoc domowa",
+    preset: { category: "opieka", subcategory: "Opieka nad zwierzęciem", pricingMethod: "per_day" },
+  },
+  {
+    id: "rezerwacja", icon: "📋", label: "Rezerwacja", desc: "Zadatek, zaliczka, rezerwacja",
+    preset: { category: "rezerwacja", subcategory: "Nieruchomość", pricingMethod: "total" },
+  },
 ];
 
 const COMMUNITY_TEMPLATES = [
