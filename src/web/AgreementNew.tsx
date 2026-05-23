@@ -738,7 +738,7 @@ function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContr
           </div>
           {visible.map(c => {
             const badge = deadlineBadge(c);
-            const catIcon: Record<string,string> = { usluga:"🛠️", remont:"🔨", sprzedaz:"🛍️", wynajem:"🏠", wlasna:"📝", wypozyczenie:"🔑" };
+            const catIcon: Record<string,string> = { usluga:"🛠️", remont:"🔨", sprzedaz:"🛍️", wynajem:"🏠", wlasna:"📝", wypozyczenie:"🔑", pozyczka:"💰", korepetycje:"📚", opieka:"🐾", rezerwacja:"📋" };
             const otherRole = c.data.myRole === "client"
               ? (c.data.category === "wynajem" ? "Wynajmujący" : c.data.category === "sprzedaz" ? "Sprzedający" : c.data.category === "wypozyczenie" ? "Wypożyczający" : "Wykonawca")
               : (c.data.category === "wynajem" ? "Najemca" : c.data.category === "sprzedaz" ? "Kupujący" : c.data.category === "wypozyczenie" ? "Pożyczający" : "Zamawiający");
@@ -887,11 +887,15 @@ function SectionLabel({ children, style }: { children: React.ReactNode; style?: 
 }
 
 const SUBCATEGORIES: Record<string, string[]> = {
-  usluga: ["Programowanie / IT", "Grafika / Design", "Marketing / SEO", "Fotografia", "Copywriting", "Tłumaczenie", "Naprawa", "Montaż", "Transport", "Sprzątanie", "Pomoc/opieka", "Inna"],
+  usluga: ["Programowanie / IT", "Grafika / Design", "Marketing / SEO", "Fotografia", "Copywriting", "Tłumaczenie", "Naprawa", "Montaż", "Transport", "Sprzątanie", "Pomoc/opieka", "Trener personalny / Dietetyk", "Coaching / Mentoring", "Artysta / DJ / Performer", "Catering", "Inna"],
   remont: ["Malowanie", "Szpachlowanie", "Podłogi", "Łazienka", "Kuchnia", "Elektryka", "Hydraulika", "Cały remont"],
   sprzedaz: ["Auto/pojazd", "Elektronika", "Meble", "Narzędzia", "Sprzęt domowy", "Towar firmowy", "Inna rzecz"],
   wynajem: ["Mieszkanie", "Pokój", "Lokal", "Garaż/parking", "Auto/pojazd", "Sprzęt", "Inny wynajem"],
   wypozyczenie: ["Auto/pojazd", "Motocykl/skuter", "Elektronika", "Narzędzia/sprzęt", "Meble/wyposażenie", "Sprzęt sportowy", "Inne"],
+  pozyczka: ["Między znajomymi", "Między rodziną", "Firmowa"],
+  korepetycje: ["Matematyka", "Języki obce", "Nauki ścisłe", "Humanistyka", "Programowanie", "Muzyka/Sztuka", "Przygotowanie do matury", "Inne"],
+  opieka: ["Opieka nad zwierzęciem", "Opieka nad dzieckiem", "Opieka nad starszą osobą", "Sprzątanie/Pomoc domowa"],
+  rezerwacja: ["Nieruchomość", "Pojazd", "Usługa/Event", "Sprzęt/Towar", "Inne"],
 };
 
 const PRICING_OPTIONS: Record<string, { value: string; label: string }[]> = {
@@ -927,6 +931,20 @@ const PRICING_OPTIONS: Record<string, { value: string; label: string }[]> = {
   wlasna: [
     { value: "price", label: "Cena" },
     { value: "value", label: "Wartość umowy" },
+  ],
+  pozyczka: [
+    { value: "total", label: "Kwota pożyczki (jednorazowo)" },
+  ],
+  korepetycje: [
+    { value: "hourly", label: "Stawka za godzinę" },
+    { value: "per_session", label: "Stawka za lekcję" },
+  ],
+  opieka: [
+    { value: "per_day", label: "Stawka dzienna" },
+    { value: "hourly", label: "Stawka godzinowa" },
+  ],
+  rezerwacja: [
+    { value: "total", label: "Kwota zadatku / zaliczki" },
   ],
 };
 
@@ -1009,6 +1027,10 @@ function getSteps(category: string) {
   if (category === "sprzedaz") base.push({ id: "szczegoly", label: "Opis przedmiotu" });
   if (category === "wynajem") base.push({ id: "szczegoly_wynajmu", label: "Szczegóły wynajmu" });
   if (category === "wypozyczenie") base.push({ id: "szczegoly_wypozyczenia", label: "Przedmiot" });
+  if (category === "pozyczka") base.push({ id: "szczegoly_pozyczki", label: "Szczegóły pożyczki" });
+  if (category === "korepetycje") base.push({ id: "szczegoly_korepetycji", label: "Szczegóły korepetycji" });
+  if (category === "opieka") base.push({ id: "szczegoly_opieki", label: "Szczegóły opieki" });
+  if (category === "rezerwacja") base.push({ id: "szczegoly_rezerwacji", label: "Szczegóły rezerwacji" });
   base.push({ id: "dodatki", label: "Koszty dodatkowe" });
   base.push({ id: "wycena_koncowa", label: "Wycena końcowa" });
   base.push({ id: "platnosc", label: "Sposób płatności" });
@@ -1302,6 +1324,10 @@ export default function AgreementNew() {
       case "szczegoly": return <StepSzczegolySprzedaz data={data} update={update} />;
       case "szczegoly_wynajmu": return <StepSzczegolyWynajem data={data} update={update} />;
       case "szczegoly_wypozyczenia": return <StepSzczegolyWypozyczenia data={data} update={update} />;
+      case "szczegoly_pozyczki": return <StepSzczegolyPozyczka data={data} update={update} />;
+      case "szczegoly_korepetycji": return <StepSzczegolyKorepetycje data={data} update={update} />;
+      case "szczegoly_opieki": return <StepSzczegolyOpieka data={data} update={update} />;
+      case "szczegoly_rezerwacji": return <StepSzczegolyRezerwacja data={data} update={update} />;
       case "dodatki": return <StepDodatki data={data} update={update} additionalTotal={additionalTotal} />;
       case "wycena_koncowa": return <StepWycenaKoncowa data={data} update={update} totalPrice={totalPrice} additionalTotal={additionalTotal} goBack={goBack} />;
       case "platnosc": return <StepPlatnosc data={data} update={update} totalPrice={totalPrice} />;
@@ -1577,6 +1603,412 @@ function StepSzczegolyWypozyczenia({ data, update }: { data: WizardData; update:
   );
 }
 
+// ——— STEP: Szczegóły pożyczki
+function StepSzczegolyPozyczka({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
+  return (
+    <div>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Szczegóły pożyczki 💰</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 18, lineHeight: 1.5 }}>Uzupełnij warunki pożyczki pieniężnej.</p>
+
+      <div style={sectionCard}>
+        <SectionLabel>Moja rola w tej pożyczce</SectionLabel>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {(["pożyczkodawca", "pożyczkobiorca"] as const).map(r => (
+            <div key={r} onClick={() => update({ loanLenderRole: r })}
+              style={{ ...cardStyle(data.loanLenderRole === r), padding: "10px 16px", flex: 1, textAlign: "center", cursor: "pointer" }}>
+              <div style={{ color: data.loanLenderRole === r ? "var(--color-primary)" : "var(--color-foreground)", fontWeight: 700, fontSize: 14 }}>
+                {r === "pożyczkodawca" ? "💵 Pożyczkodawca" : "🤲 Pożyczkobiorca"}
+              </div>
+              <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, marginTop: 3 }}>
+                {r === "pożyczkodawca" ? "Pożyczam pieniądze" : "Otrzymuję pieniądze"}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Kwota pożyczki ({data.currency})</SectionLabel>
+        <input type="number" value={data.loanAmount || ""} onChange={e => update({ loanAmount: parseFloat(e.target.value) || 0, basePrice: parseFloat(e.target.value) || 0 })}
+          placeholder="np. 5000" style={{ ...inputStyle, fontSize: 20, fontWeight: 700 }} />
+      </div>
+
+      <div style={sectionCard}>
+        <Toggle on={data.loanInterest} onChange={v => update({ loanInterest: v })} label="Pożyczka z odsetkami" />
+        {data.loanInterest && (
+          <div style={{ marginTop: 12 }}>
+            <SectionLabel>Oprocentowanie % (rocznie, max 10% — odsetki ustawowe)</SectionLabel>
+            <input type="number" value={data.loanInterestRate || ""} onChange={e => update({ loanInterestRate: Math.min(10, parseFloat(e.target.value) || 0) })}
+              placeholder="np. 5" style={inputStyle} min={0} max={10} step={0.1} />
+            <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, marginTop: 6 }}>
+              Maksymalne odsetki ustawowe wg Art. 359 §2¹ KC to 10% rocznie.
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Sposób spłaty</SectionLabel>
+        <div style={{ display: "flex", gap: 8 }}>
+          {(["jednorazowo", "raty"] as const).map(t => (
+            <div key={t} onClick={() => update({ loanRepaymentType: t })}
+              style={{ ...cardStyle(data.loanRepaymentType === t), flex: 1, textAlign: "center", padding: "10px 12px", cursor: "pointer" }}>
+              <div style={{ color: data.loanRepaymentType === t ? "var(--color-primary)" : "var(--color-foreground)", fontWeight: 700, fontSize: 14 }}>
+                {t === "jednorazowo" ? "Jednorazowo" : "W ratach"}
+              </div>
+            </div>
+          ))}
+        </div>
+        {data.loanRepaymentType === "raty" && (
+          <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <SectionLabel>Liczba rat</SectionLabel>
+              <input type="number" value={data.loanInstallments || ""} onChange={e => update({ loanInstallments: parseInt(e.target.value) || 0 })}
+                placeholder="np. 12" style={inputStyle} min={2} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <SectionLabel>Dzień miesiąca spłaty</SectionLabel>
+              <input type="number" value={data.loanInstallmentDay || ""} onChange={e => update({ loanInstallmentDay: Math.min(28, Math.max(1, parseInt(e.target.value) || 1)) })}
+                placeholder="np. 1" style={inputStyle} min={1} max={28} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Cel pożyczki (opcjonalnie)</SectionLabel>
+        <input value={data.loanPurpose} onChange={e => update({ loanPurpose: e.target.value })}
+          placeholder="np. zakup samochodu, remont mieszkania" style={inputStyle} />
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Zabezpieczenie (opcjonalnie)</SectionLabel>
+        <input value={data.loanCollateral} onChange={e => update({ loanCollateral: e.target.value })}
+          placeholder="np. weksel, hipoteka, poręczenie" style={inputStyle} />
+      </div>
+    </div>
+  );
+}
+
+// ——— STEP: Szczegóły korepetycji
+function StepSzczegolyKorepetycje({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
+  return (
+    <div>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Szczegóły korepetycji 📚</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 18, lineHeight: 1.5 }}>Uzupełnij szczegóły zajęć edukacyjnych.</p>
+
+      <div style={sectionCard}>
+        <SectionLabel>Przedmiot / temat zajęć</SectionLabel>
+        <input value={data.tutorSubject} onChange={e => update({ tutorSubject: e.target.value })}
+          placeholder="np. Matematyka, Angielski B2, React.js" style={inputStyle} />
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Poziom ucznia</SectionLabel>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {(["podstawówka", "liceum", "studia", "dorosły"] as const).map(l => (
+            <div key={l} onClick={() => update({ tutorLevel: l })} style={pillStyle(data.tutorLevel === l)}>{l}</div>
+          ))}
+        </div>
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Czas trwania lekcji (minuty)</SectionLabel>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {([45, 60, 90, 120] as const).map(d => (
+            <div key={d} onClick={() => update({ tutorDuration: d })} style={pillStyle(data.tutorDuration === d)}>{d} min</div>
+          ))}
+        </div>
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Częstotliwość (zajęcia w tygodniu)</SectionLabel>
+        <input type="number" value={data.tutorFrequency || ""} onChange={e => update({ tutorFrequency: parseInt(e.target.value) || 1 })}
+          placeholder="np. 2" style={inputStyle} min={1} max={7} />
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Miejsce zajęć</SectionLabel>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {(["u ucznia", "u nauczyciela", "online", "elastyczne"] as const).map(l => (
+            <div key={l} onClick={() => update({ tutorLocation: l })} style={pillStyle(data.tutorLocation === l)}>{l}</div>
+          ))}
+        </div>
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Kto dostarcza materiały</SectionLabel>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {(["nauczyciel", "uczeń", "wspólnie"] as const).map(m => (
+            <div key={m} onClick={() => update({ tutorMaterials: m })} style={pillStyle(data.tutorMaterials === m)}>{m}</div>
+          ))}
+        </div>
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Termin odwołania zajęć (z góry)</SectionLabel>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {([24, 48, 72] as const).map(h => (
+            <div key={h} onClick={() => update({ tutorCancelPolicy: h })} style={pillStyle(data.tutorCancelPolicy === h)}>{h}h przed</div>
+          ))}
+        </div>
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Łączna liczba zajęć (0 = bezterminowo)</SectionLabel>
+        <input type="number" value={data.tutorSessions || ""} onChange={e => update({ tutorSessions: parseInt(e.target.value) || 0 })}
+          placeholder="0 = bezterminowo" style={inputStyle} min={0} />
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Cel (opcjonalnie)</SectionLabel>
+        <input value={data.tutorGoal} onChange={e => update({ tutorGoal: e.target.value })}
+          placeholder="np. zdanie matury, certyfikat B2, zaliczenie semestru" style={inputStyle} />
+      </div>
+    </div>
+  );
+}
+
+// ——— STEP: Szczegóły opieki
+function StepSzczegolyOpieka({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
+  const isAnimal = data.subcategory === "Opieka nad zwierzęciem";
+  const isChild = data.subcategory === "Opieka nad dzieckiem";
+
+  return (
+    <div>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Szczegóły opieki 🐾</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 18, lineHeight: 1.5 }}>Uzupełnij informacje dotyczące zakresu opieki.</p>
+
+      <div style={sectionCard}>
+        <SectionLabel>Okres opieki</SectionLabel>
+        <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700, marginBottom: 4 }}>OD</div>
+            <input type="date" value={data.careFrom} onChange={e => update({ careFrom: e.target.value })} style={inputStyle} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700, marginBottom: 4 }}>DO</div>
+            <input type="date" value={data.careTo} onChange={e => update({ careTo: e.target.value })} style={inputStyle} />
+          </div>
+        </div>
+      </div>
+
+      {isAnimal && (
+        <>
+          <div style={sectionCard}>
+            <SectionLabel>Imię zwierzęcia</SectionLabel>
+            <input value={data.petName} onChange={e => update({ petName: e.target.value })}
+              placeholder="np. Burek, Luna" style={inputStyle} />
+          </div>
+          <div style={sectionCard}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <SectionLabel>Gatunek</SectionLabel>
+                <input value={data.petSpecies} onChange={e => update({ petSpecies: e.target.value })}
+                  placeholder="pies, kot, ptak..." style={inputStyle} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <SectionLabel>Rasa</SectionLabel>
+                <input value={data.petBreed} onChange={e => update({ petBreed: e.target.value })}
+                  placeholder="opcjonalnie" style={inputStyle} />
+              </div>
+            </div>
+          </div>
+          <div style={sectionCard}>
+            <SectionLabel>Numer chipa / tatuażu (opcjonalnie)</SectionLabel>
+            <input value={data.petChip} onChange={e => update({ petChip: e.target.value })}
+              placeholder="np. 616094000123456" style={inputStyle} />
+          </div>
+          <div style={sectionCard}>
+            <SectionLabel>Choroby / leki / alergie (opcjonalnie)</SectionLabel>
+            <textarea value={data.petMedical} onChange={e => update({ petMedical: e.target.value })}
+              placeholder="Opisz stan zdrowia i ewentualne leki..." style={textareaStyle} />
+          </div>
+          <div style={sectionCard}>
+            <SectionLabel>Kontakt do weterynarza (opcjonalnie)</SectionLabel>
+            <input value={data.petVetContact} onChange={e => update({ petVetContact: e.target.value })}
+              placeholder="nazwa i telefon gabinetu" style={inputStyle} />
+          </div>
+          <div style={sectionCard}>
+            <SectionLabel>Typ opieki</SectionLabel>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {["spacery", "karmienie", "nocowanie", "wizyty"].map(t => {
+                const active = data.careType.includes(t);
+                return (
+                  <div key={t} onClick={() => update({ careType: active ? data.careType.filter(x => x !== t) : [...data.careType, t] })}
+                    style={pillStyle(active)}>{t}</div>
+                );
+              })}
+            </div>
+          </div>
+          <div style={sectionCard}>
+            <SectionLabel>Godziny opieki (opcjonalnie)</SectionLabel>
+            <input value={data.careSchedule} onChange={e => update({ careSchedule: e.target.value })}
+              placeholder="np. 7:00–9:00, 17:00–19:00" style={inputStyle} />
+          </div>
+        </>
+      )}
+
+      {isChild && (
+        <>
+          <div style={sectionCard}>
+            <SectionLabel>Wiek dziecka (lata)</SectionLabel>
+            <input type="number" value={data.childAge || ""} onChange={e => update({ childAge: parseInt(e.target.value) || 0 })}
+              placeholder="np. 7" style={inputStyle} min={0} max={18} />
+          </div>
+          <div style={sectionCard}>
+            <Toggle on={data.childPickup} onChange={v => update({ childPickup: v })} label="Odbiór ze szkoły / przedszkola" />
+          </div>
+          <div style={sectionCard}>
+            <SectionLabel>Alergie / choroby / leki (opcjonalnie)</SectionLabel>
+            <textarea value={data.childMedical} onChange={e => update({ childMedical: e.target.value })}
+              placeholder="Opisz ewentualne alergie, choroby, leki..." style={textareaStyle} />
+          </div>
+          <div style={sectionCard}>
+            <SectionLabel>Zakazy i ograniczenia</SectionLabel>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {["media", "goście", "wyjście na zewnątrz"].map(r => {
+                const active = data.childRestrictions.includes(r);
+                return (
+                  <div key={r} onClick={() => update({ childRestrictions: active ? data.childRestrictions.filter(x => x !== r) : [...data.childRestrictions, r] })}
+                    style={pillStyle(active)}>{r}</div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
+      <div style={sectionCard}>
+        <SectionLabel>Kontakt alarmowy właściciela / rodzica</SectionLabel>
+        <input value={data.emergencyContact} onChange={e => update({ emergencyContact: e.target.value })}
+          placeholder="imię i telefon" style={inputStyle} />
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Kaucja (opcjonalnie, {data.currency})</SectionLabel>
+        <input type="number" value={data.careDeposit || ""} onChange={e => update({ careDeposit: parseFloat(e.target.value) || 0 })}
+          placeholder="np. 200" style={inputStyle} />
+      </div>
+    </div>
+  );
+}
+
+// ——— STEP: Szczegóły rezerwacji
+function StepSzczegolyRezerwacja({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  return (
+    <div>
+      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Szczegóły rezerwacji 📋</h2>
+      <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 18, lineHeight: 1.5 }}>Uzupełnij warunki rezerwacji / zadatku / zaliczki.</p>
+
+      <div style={sectionCard}>
+        <SectionLabel>Opis przedmiotu / nieruchomości rezerwacji</SectionLabel>
+        <textarea value={data.reservationItem} onChange={e => update({ reservationItem: e.target.value })}
+          placeholder="np. Mieszkanie 60m², ul. Kwiatowa 5/10, Warszawa" style={textareaStyle} />
+      </div>
+
+      <div style={sectionCard}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <SectionLabel style={{ margin: 0 }}>Typ wpłaty</SectionLabel>
+          <button onClick={() => setShowTooltip(v => !v)} style={{ border: "none", background: "transparent", color: "var(--color-primary)", fontSize: 16, cursor: "pointer", padding: 0, lineHeight: 1 }}>ℹ️</button>
+        </div>
+        {showTooltip && (
+          <div style={{ padding: "10px 12px", borderRadius: 10, background: "color-mix(in srgb, #f59e0b 10%, transparent)", border: "1px solid color-mix(in srgb, #f59e0b 40%, transparent)", marginBottom: 12, fontSize: 13, color: "var(--color-foreground)", lineHeight: 1.6 }}>
+            <b>Zadatek (Art. 394 KC)</b> — jeśli kupujący rezygnuje, traci zadatek. Jeśli sprzedający rezygnuje, zwraca go w PODWÓJNEJ kwocie.<br /><br />
+            <b>Zaliczka</b> — zawsze zwracana w całości w razie odstąpienia od umowy.
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 8 }}>
+          {(["zadatek", "zaliczka"] as const).map(t => (
+            <div key={t} onClick={() => update({ reservationType: t })}
+              style={{ ...cardStyle(data.reservationType === t), flex: 1, textAlign: "center", padding: "10px 12px", cursor: "pointer" }}>
+              <div style={{ color: data.reservationType === t ? "var(--color-primary)" : "var(--color-foreground)", fontWeight: 700, fontSize: 14 }}>
+                {t === "zadatek" ? "🔒 Zadatek" : "💵 Zaliczka"}
+              </div>
+              <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, marginTop: 3 }}>
+                {t === "zadatek" ? "Silniejsze zabezpieczenie" : "Zawsze zwracana"}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Kwota {data.reservationType === "zadatek" ? "zadatku" : "zaliczki"} ({data.currency})</SectionLabel>
+        <input type="number" value={data.reservationAmount || ""} onChange={e => update({ reservationAmount: parseFloat(e.target.value) || 0, basePrice: parseFloat(e.target.value) || 0 })}
+          placeholder="np. 5000" style={{ ...inputStyle, fontSize: 20, fontWeight: 700 }} />
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Docelowa cena transakcji ({data.currency})</SectionLabel>
+        <input type="number" value={data.finalPrice || ""} onChange={e => update({ finalPrice: parseFloat(e.target.value) || 0 })}
+          placeholder="np. 350000" style={inputStyle} />
+        {data.finalPrice > 0 && data.reservationAmount > 0 && (
+          <div style={{ color: "var(--color-muted-foreground)", fontSize: 12, marginTop: 6 }}>
+            {data.reservationType === "zadatek" ? "Zadatek" : "Zaliczka"} stanowi {Math.round(data.reservationAmount / data.finalPrice * 100)}% ceny docelowej
+          </div>
+        )}
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Termin finalizacji transakcji</SectionLabel>
+        <input type="date" value={data.finalTransactionDate} onChange={e => update({ finalTransactionDate: e.target.value })} style={inputStyle} />
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Ważność rezerwacji do</SectionLabel>
+        <input type="date" value={data.reservationExpiry} onChange={e => update({ reservationExpiry: e.target.value })} style={inputStyle} />
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Warunki odstąpienia (opcjonalnie)</SectionLabel>
+        <textarea value={data.reservationConditions} onChange={e => update({ reservationConditions: e.target.value })}
+          placeholder="Opisz warunki, przy których strony mogą odstąpić od umowy..." style={textareaStyle} />
+      </div>
+    </div>
+  );
+}
+
+// ——— STEP: Szczegóły Artysta / DJ (wyświetlane w zakresie dla usluga › Artysta / DJ / Performer)
+function StepArtystaDetails({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div style={{ color: "var(--color-primary)", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>
+        🎵 Szczegóły występu
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Typ wydarzenia</SectionLabel>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {(["wesele", "urodziny", "impreza firmowa", "koncert", "inne"] as const).map(t => (
+            <div key={t} onClick={() => update({ eventType: t })} style={pillStyle(data.eventType === t)}>{t}</div>
+          ))}
+        </div>
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Czas grania / występu (godziny)</SectionLabel>
+        <input type="number" value={data.eventHours || ""} onChange={e => update({ eventHours: parseFloat(e.target.value) || 0 })}
+          placeholder="np. 4" style={inputStyle} min={1} step={0.5} />
+      </div>
+
+      <div style={sectionCard}>
+        <SectionLabel>Sprzęt nagłośnieniowy zapewnia</SectionLabel>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {(["artysta", "organizator", "wspólnie"] as const).map(e => (
+            <div key={e} onClick={() => update({ equipmentBy: e })} style={pillStyle(data.equipmentBy === e)}>{e}</div>
+          ))}
+        </div>
+      </div>
+
+      <div style={sectionCard}>
+        <Toggle on={data.recordingRights} onChange={v => update({ recordingRights: v })} label="Organizator może nagrywać/transmitować" />
+      </div>
+    </div>
+  );
+}
+
 // ——— STEP 1: Kategoria
 function StepKategoria({ data, update, goNext }: { data: WizardData; update: (p: Partial<WizardData>) => void; goNext: () => void }) {
   const categories: { value: Category; label: string; icon: string }[] = [
@@ -1586,6 +2018,10 @@ function StepKategoria({ data, update, goNext }: { data: WizardData; update: (p:
     { value: "wynajem", label: "Wynajem", icon: "🏠" },
     { value: "wlasna", label: "Stwórz własną", icon: "📝" },
     { value: "wypozyczenie", label: "Wypożyczenie", icon: "🔑" },
+    { value: "pozyczka", label: "Pożyczka", icon: "💰" },
+    { value: "korepetycje", label: "Korepetycje", icon: "📚" },
+    { value: "opieka", label: "Opieka", icon: "🐾" },
+    { value: "rezerwacja", label: "Rezerwacja", icon: "📋" },
   ];
   return (
     <div>
@@ -2240,6 +2676,7 @@ function StepZakres({ data, update }: { data: WizardData; update: (p: Partial<Wi
         <Toggle on={data.scopeWarranty} onChange={v => update({ scopeWarranty: v })} label="Gwarancja na wykonanie" />
         <Toggle on={data.scopeAcceptance} onChange={v => update({ scopeAcceptance: v })} label="Wymagany odbiór" />
       </div>
+      {data.subcategory === "Artysta / DJ / Performer" && <StepArtystaDetails data={data} update={update} />}
     </div>
   );
 
@@ -4046,6 +4483,10 @@ function ContractLifecycle({
   const [disputeNote, setDisputeNote] = useState("");
   const [showProtocol, setShowProtocol] = useState(false);
   const [quickNote, setQuickNote] = useState("");
+  const [aneksOpen, setAneksOpen] = useState(false);
+  const [aneksType, setAneksType] = useState<"termin" | "kwota" | "zakres" | "inne">("inne");
+  const [aneksDescription, setAneksDescription] = useState("");
+  const [aneksNewValue, setAneksNewValue] = useState("");
   const [protocolStatus, setProtocolStatus] = useState<"" | "accepted" | "with_notes" | "needs_fixes" | "rejected">("");
   const [protocolDesc, setProtocolDesc] = useState("");
   const [protocolPhotos, setProtocolPhotos] = useState(false);
@@ -4198,6 +4639,18 @@ function ContractLifecycle({
       { id: "in_progress",           icon: "📦", label: "Przekazanie przedmiotu",   who: contractorLabel, desc: `${contractorLabel} przygotowuje i przekazuje przedmiot kupującemu` },
       { id: "awaiting_release",      icon: "📋", label: "Odbiór przez kupującego",  who: clientLabel,     desc: `${clientLabel} odbiera i sprawdza przedmiot` },
       { id: "completed",             icon: "🔓", label: "Transakcja zakończona",    who: contractorLabel, desc: `Środki przekazane — własność przeszła na ${clientLabel.toLowerCase()}` },
+    ] : data.category === "pozyczka" ? [
+      { id: "awaiting_counterparty", icon: "✍️", label: "Umowa podpisana — oczekuje na podpis pożyczkobiorcy", who: contractorLabel, desc: `${contractorLabel} przegląda i podpisuje umowę pożyczki` },
+      { id: "awaiting_deposit",      icon: "💳", label: "Umowa podpisana — oczekuje na przelew kwoty",        who: clientLabel,     desc: `${clientLabel} przekazuje kwotę pożyczki` },
+      { id: "in_progress",           icon: "💰", label: "Kwota przekazana — trwa spłata",                     who: clientLabel,     desc: `Pożyczkobiorca spłaca pożyczkę zgodnie z harmonogramem` },
+      { id: "awaiting_release",      icon: "📋", label: "Spłata zgłoszona — oczekuje na potwierdzenie",       who: contractorLabel, desc: `Pożyczkodawca potwierdza spłatę całości` },
+      { id: "completed",             icon: "✅", label: "Pożyczka spłacona",                                  who: contractorLabel, desc: `Pożyczka rozliczona — umowa zakończona` },
+    ] : data.category === "rezerwacja" ? [
+      { id: "awaiting_counterparty", icon: "✍️", label: "Akceptacja rezerwacji",    who: contractorLabel, desc: `${contractorLabel} przegląda i akceptuje warunki rezerwacji` },
+      { id: "awaiting_deposit",      icon: "💳", label: "Wpłata zadatku / zaliczki", who: clientLabel,     desc: `${clientLabel} wpłaca uzgodniony ${data.reservationType || "zadatek"}` },
+      { id: "in_progress",           icon: "📋", label: "Rezerwacja aktywna",        who: clientLabel,     desc: `Rezerwacja potwierdzona — oczekiwanie na finalizację transakcji` },
+      { id: "awaiting_release",      icon: "🤝", label: "Finalizacja transakcji",    who: clientLabel,     desc: `Strony finalizują transakcję zgodnie z warunkami` },
+      { id: "completed",             icon: "🔓", label: "Transakcja sfinalizowana",  who: contractorLabel, desc: `Rezerwacja zakończona pomyślnie` },
     ] : [
       { id: "awaiting_counterparty", icon: "✍️", label: "Akceptacja umowy",        who: contractorLabel, desc: `${contractorLabel} przegląda i podpisuje umowę` },
       { id: "awaiting_deposit",      icon: "💳", label: "Wpłata na escrow",         who: clientLabel,     desc: `${clientLabel} wpłaca środki — zablokowane do odbioru` },
@@ -4730,6 +5183,16 @@ function ContractLifecycle({
         </div>
       )}
 
+      {/* Aneks button — for contracts in in_progress phase */}
+      {phase === "in_progress" && (
+        <button
+          onClick={() => setAneksOpen(true)}
+          style={{ width: "100%", padding: "10px", borderRadius: 12, border: "1.5px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-muted-foreground)", fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+        >
+          ✏️ Zaproponuj aneks
+        </button>
+      )}
+
       {/* Dispute button — for client in active phases */}
       {isClient && (phase === "in_progress" || phase === "awaiting_release") && (
         <button
@@ -4910,6 +5373,66 @@ function ContractLifecycle({
           >
             💾 Zapisz jako szablon
           </button>
+        </div>
+      )}
+
+      {/* Aneks modal */}
+      {aneksOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setAneksOpen(false)}>
+          <div style={{ background: "var(--color-card)", borderRadius: "20px 20px 0 0", padding: "24px 20px 32px", width: "100%", maxWidth: "min(560px, 100vw)", boxSizing: "border-box" }} onClick={e => e.stopPropagation()}>
+            <div style={{ color: "var(--color-foreground)", fontSize: 18, fontWeight: 800, marginBottom: 4 }}>✏️ Zaproponuj aneks</div>
+            <div style={{ color: "var(--color-muted-foreground)", fontSize: 13, marginBottom: 16, lineHeight: 1.5 }}>Zaproponuj zmianę warunków umowy. Zostanie zapisana jako nota w historii aktywności.</div>
+
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Typ zmiany</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {(["termin", "kwota", "zakres", "inne"] as const).map(t => (
+                  <div key={t} onClick={() => setAneksType(t)} style={pillStyle(aneksType === t)}>{t}</div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Nowa wartość</div>
+              <input
+                value={aneksNewValue}
+                onChange={e => setAneksNewValue(e.target.value)}
+                placeholder={aneksType === "termin" ? "np. 2025-08-15" : aneksType === "kwota" ? "np. 2500 PLN" : aneksType === "zakres" ? "np. dodano montaż mebli" : "Opisz zmianę..."}
+                style={inputStyle}
+              />
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ color: "var(--color-muted-foreground)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Opis zmiany (opcjonalnie)</div>
+              <textarea
+                value={aneksDescription}
+                onChange={e => setAneksDescription(e.target.value)}
+                placeholder="Dlaczego proponujesz tę zmianę?"
+                rows={2}
+                style={{ ...textareaStyle, minHeight: 64 }}
+              />
+            </div>
+
+            <button
+              disabled={!aneksNewValue.trim()}
+              onClick={() => {
+                if (!aneksNewValue.trim()) return;
+                addContractEvent(contractId, {
+                  type: "note",
+                  icon: "📝",
+                  label: `Aneks zaproponowany: ${aneksType} → ${aneksNewValue.trim()}${aneksDescription.trim() ? ` (${aneksDescription.trim().slice(0, 80)})` : ""}`,
+                });
+                setAneksOpen(false);
+                setAneksNewValue("");
+                setAneksDescription("");
+                setAneksType("inne");
+              }}
+              style={{ ...btnPrimary, width: "100%", padding: "13px", fontSize: 15, marginBottom: 8, background: !aneksNewValue.trim() ? "var(--color-border)" : "var(--color-primary)", cursor: !aneksNewValue.trim() ? "not-allowed" : "pointer" }}
+            >
+              📝 Dodaj aneks do historii
+            </button>
+            <button onClick={() => setAneksOpen(false)} style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1px solid var(--color-border)", background: "transparent", color: "var(--color-muted-foreground)", fontSize: 14, cursor: "pointer" }}>Anuluj</button>
+          </div>
         </div>
       )}
 
