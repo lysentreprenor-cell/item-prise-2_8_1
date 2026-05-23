@@ -142,9 +142,9 @@ export default function ContactSelection() {
               gridColumn: "1 / -1",
               height: 80,
               borderRadius: 20,
-              background: "linear-gradient(135deg, rgba(147,51,234,0.32) 0%, rgba(79,70,229,0.24) 100%)",
-              border: "1.5px solid rgba(147,51,234,0.60)",
-              boxShadow: "0 4px 24px rgba(147,51,234,0.30), 0 1px 0 rgba(255,255,255,0.10) inset",
+              background: "linear-gradient(135deg, #6d28d9 0%, #4338ca 100%)",
+              border: "2px solid #9333ea",
+              boxShadow: "0 4px 32px rgba(147,51,234,0.55), 0 1px 0 rgba(255,255,255,0.15) inset",
               display: "flex",
               alignItems: "center",
               gap: 16,
@@ -167,8 +167,8 @@ export default function ContactSelection() {
 
             <div style={{
               width: 42, height: 42, borderRadius: 13, flexShrink: 0,
-              background: "rgba(147,51,234,0.35)",
-              border: "1px solid rgba(147,51,234,0.65)",
+              background: "rgba(147,51,234,0.55)",
+              border: "1.5px solid #a855f7",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               <FilePlus style={{ width: 20, height: 20, color: "#c084fc", filter: "drop-shadow(0 0 6px rgba(192,132,252,0.7))" }} />
