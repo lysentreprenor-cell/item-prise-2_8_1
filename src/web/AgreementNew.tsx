@@ -1133,7 +1133,8 @@ function LiveTicker({ total, label, currency }: { total: number; label: string; 
 }
 
 export default function AgreementNew() {
-  const { defaultCurrency } = useAppStore();
+  const { user } = useAppStore();
+  const defaultCurrency = (user?.currency as string) || "PLN";
   const search = useSearch();
   const forceNew = new URLSearchParams(search).get("new") === "1";
   const [view, setView] = useState<"home" | "wizard">(() => {
