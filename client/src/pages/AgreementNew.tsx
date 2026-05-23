@@ -4,7 +4,7 @@ import { useAppStore, type CurrencyCode } from "@/lib/store";
 import { useSearch } from "wouter";
 
 // ——— Types
-type Category = "usluga" | "remont" | "sprzedaz" | "wynajem" | "wlasna" | "wypozyczenie";
+type Category = "usluga" | "remont" | "sprzedaz" | "wynajem" | "wlasna" | "wypozyczenie" | "pozyczka" | "korepetycje" | "opieka" | "rezerwacja";
 type PricingMethod = string;
 type DeadlineType = "single" | "range" | "stages" | "cyclic" | "tbd";
 type ProtocolStatus = "accepted" | "with_notes" | "needs_fixes" | "rejected";
@@ -183,6 +183,56 @@ interface WizardData {
   ipTransfer: boolean;
   confidentiality: boolean;
   revisionRounds: number;
+  // Pożyczka fields
+  loanAmount: number;
+  loanInterest: boolean;
+  loanInterestRate: number;
+  loanRepaymentType: "jednorazowo" | "raty";
+  loanInstallments: number;
+  loanInstallmentDay: number;
+  loanPurpose: string;
+  loanCollateral: string;
+  loanLenderRole: "pożyczkodawca" | "pożyczkobiorca";
+  // Korepetycje fields
+  tutorSubject: string;
+  tutorLevel: "podstawówka" | "liceum" | "studia" | "dorosły";
+  tutorFrequency: number;
+  tutorDuration: 45 | 60 | 90 | 120;
+  tutorLocation: "u ucznia" | "u nauczyciela" | "online" | "elastyczne";
+  tutorCancelPolicy: 24 | 48 | 72;
+  tutorGoal: string;
+  tutorMaterials: "nauczyciel" | "uczeń" | "wspólnie";
+  tutorSessions: number;
+  // Opieka fields
+  petName: string;
+  petSpecies: string;
+  petBreed: string;
+  petChip: string;
+  petVetContact: string;
+  petMedical: string;
+  careType: string[];
+  careSchedule: string;
+  emergencyContact: string;
+  childAge: number;
+  childPickup: boolean;
+  childMedical: string;
+  childRestrictions: string[];
+  careFrom: string;
+  careTo: string;
+  careDeposit: number;
+  // Rezerwacja fields
+  reservationItem: string;
+  reservationType: "zadatek" | "zaliczka";
+  reservationAmount: number;
+  finalTransactionDate: string;
+  reservationExpiry: string;
+  finalPrice: number;
+  reservationConditions: string;
+  // Artysta/DJ fields
+  eventType: "wesele" | "urodziny" | "impreza firmowa" | "koncert" | "inne";
+  eventHours: number;
+  equipmentBy: "artysta" | "organizator" | "wspólnie";
+  recordingRights: boolean;
 }
 
 const INITIAL: WizardData = {
@@ -215,6 +265,24 @@ const INITIAL: WizardData = {
   signed: false,
   bankAccount: "", bankBlik: "", paymentTitle: "",
   ipTransfer: true, confidentiality: false, revisionRounds: 2,
+  // Pożyczka
+  loanAmount: 0, loanInterest: false, loanInterestRate: 0,
+  loanRepaymentType: "jednorazowo", loanInstallments: 12, loanInstallmentDay: 1,
+  loanPurpose: "", loanCollateral: "", loanLenderRole: "pożyczkodawca",
+  // Korepetycje
+  tutorSubject: "", tutorLevel: "liceum", tutorFrequency: 1,
+  tutorDuration: 60, tutorLocation: "online", tutorCancelPolicy: 24,
+  tutorGoal: "", tutorMaterials: "nauczyciel", tutorSessions: 0,
+  // Opieka
+  petName: "", petSpecies: "", petBreed: "", petChip: "", petVetContact: "",
+  petMedical: "", careType: [], careSchedule: "", emergencyContact: "",
+  childAge: 0, childPickup: false, childMedical: "", childRestrictions: [],
+  careFrom: "", careTo: "", careDeposit: 0,
+  // Rezerwacja
+  reservationItem: "", reservationType: "zadatek", reservationAmount: 0,
+  finalTransactionDate: "", reservationExpiry: "", finalPrice: 0, reservationConditions: "",
+  // Artysta/DJ
+  eventType: "inne", eventHours: 2, equipmentBy: "artysta", recordingRights: false,
 };
 
 // ——— Style helpers
@@ -354,6 +422,7 @@ const PHASE_COLORS: Record<string, string> = {
 const CAT_LABELS: Record<string, string> = {
   usluga: "Usługa", remont: "Remont", sprzedaz: "Sprzedaż",
   wynajem: "Wynajem", wlasna: "Własna", wypozyczenie: "Wypożyczenie",
+  pozyczka: "Pożyczka", korepetycje: "Korepetycje", opieka: "Opieka", rezerwacja: "Rezerwacja",
 };
 
 // ——— HOME SCREEN
@@ -873,6 +942,7 @@ const DEPOSIT_COVERS_OPTIONS = [
 
 const CATEGORY_LABELS: Record<string, string> = {
   usluga: "Usługa", remont: "Remont", sprzedaz: "Sprzedaż", wynajem: "Wynajem", wlasna: "Własna", wypozyczenie: "Wypożyczenie",
+  pozyczka: "Pożyczka", korepetycje: "Korepetycje", opieka: "Opieka", rezerwacja: "Rezerwacja",
 };
 
 // Module-level presets — defined once, not re-created on every render
