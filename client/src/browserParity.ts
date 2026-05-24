@@ -1,4 +1,4 @@
-const PARITY_VERSION = "finlys-browser-parity-2026-04-17-01";
+const PARITY_VERSION = "finlys-browser-parity-2026-05-24-01";
 const VERSION_KEY = "__finlys_browser_parity_version__";
 const RELOAD_KEY = "__finlys_browser_parity_reloaded__";
 
