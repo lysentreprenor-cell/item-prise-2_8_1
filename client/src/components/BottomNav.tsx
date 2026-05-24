@@ -172,7 +172,7 @@ export function BottomNav() {
               background: "linear-gradient(180deg, rgba(255,255,255,0.28) 0%, transparent 100%)",
               borderRadius: "0 0 50% 50%", pointerEvents: "none",
             }} />
-            <ArrowRightLeft size={22} />
+            <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: 0.5, color: th.orbColor }}>Wyślij</span>
           </div>
         ) : <div style={{ width: 68 }} />}
 
