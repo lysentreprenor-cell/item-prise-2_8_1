@@ -160,7 +160,8 @@ export default function Agreements() {
 
   return (
     <div className="min-h-screen bg-background pb-32 relative overflow-hidden flex flex-col">
-      <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] bg-purple-500/5 rounded-full blur-[80px] pointer-events-none" />
+      <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] bg-purple-500/8 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-[5%] left-[-10%] w-[200px] h-[200px] bg-yellow-500/5 rounded-full blur-[80px] pointer-events-none" />
 
       <header className="px-6 pt-14 pb-4 sticky top-0 bg-background/90 backdrop-blur-xl z-20 border-b border-border">
         <div className="flex items-center justify-between mb-4">
@@ -191,7 +192,8 @@ export default function Agreements() {
             <Button
               data-testid="button-new-agreement"
               onClick={() => setLocation("/agreements/new")}
-              className="h-10 px-4 rounded-full bg-purple-500/15 text-purple-600 border border-purple-500/25 hover:bg-purple-500/25 text-[13px] font-bold tracking-widest dark:text-purple-300"
+              className="h-10 px-4 rounded-full text-[13px] font-bold tracking-widest border-none"
+              style={{ background: "linear-gradient(135deg, #7c3aed, #d4a020)", color: "#fff" }}
             >
               <Plus className="w-4 h-4 mr-1" />
               {t.agreeNewContract}
@@ -241,15 +243,16 @@ export default function Agreements() {
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center justify-center py-20 text-center"
           >
-            <div className="w-20 h-20 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-5">
-              <FileText className="w-8 h-8 text-purple-400/40" />
+            <div className="w-20 h-20 rounded-3xl bg-purple-500/12 border border-purple-500/25 flex items-center justify-center mb-5">
+              <FileText className="w-8 h-8 text-purple-400" />
             </div>
             <h3 className="text-lg font-heading text-foreground/80 mb-2">{t.agreeEmpty}</h3>
             <p className="text-sm text-muted-foreground max-w-[220px]">{t.agreeEmptyDesc}</p>
             {tab === "active" && (
               <Button
                 onClick={() => setLocation("/agreements/new")}
-                className="mt-6 rounded-xl bg-purple-500/15 text-purple-600 border border-purple-500/25 hover:bg-purple-500/25 font-bold dark:text-purple-300"
+                className="mt-6 rounded-xl border-none font-bold"
+                style={{ background: "linear-gradient(135deg, #7c3aed, #d4a020)", color: "#fff" }}
               >
                 {t.agreeNewBtn}
               </Button>
