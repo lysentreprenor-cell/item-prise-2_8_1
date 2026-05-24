@@ -243,11 +243,11 @@ export default function Agreements() {
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center justify-center py-20 text-center"
           >
-            <div className="w-20 h-20 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-5">
+            <div className="w-20 h-20 rounded-3xl bg-purple-500/12 border border-purple-500/25 flex items-center justify-center mb-5">
               <FileText className="w-8 h-8 text-purple-400" />
             </div>
-            <h3 className="text-xl font-heading text-foreground mb-2">{t.agreeEmpty}</h3>
-            <p className="text-sm text-muted-foreground max-w-[220px] leading-relaxed">{t.agreeEmptyDesc}</p>
+            <h3 className="text-lg font-heading text-foreground/80 mb-2">{t.agreeEmpty}</h3>
+            <p className="text-sm text-muted-foreground max-w-[220px]">{t.agreeEmptyDesc}</p>
             {tab === "active" && (
               <Button
                 onClick={() => setLocation("/agreements/new")}

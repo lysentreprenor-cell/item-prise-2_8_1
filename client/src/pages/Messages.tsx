@@ -328,8 +328,8 @@ export default function MessagesPage() {
       </AnimatePresence>
 
       {/* Header */}
-      <header className="px-6 sticky top-0 z-20 bg-background/90 backdrop-blur-xl border-b border-border">
-        <div className="pt-14 pb-4">
+      <header className="px-5 sticky top-0 z-20 bg-background/90 backdrop-blur-xl border-b border-border">
+        <div className="pt-14 pb-3">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
               <h1 className="text-2xl font-heading text-foreground tracking-tight">Wiadomości</h1>
@@ -350,12 +350,11 @@ export default function MessagesPage() {
             </div>
             <button
               onClick={() => setLocation("/messages/new")}
-              className="h-10 px-4 rounded-full text-[13px] font-bold tracking-widest border-none flex items-center gap-1"
-              style={{ background: "linear-gradient(135deg, #7c3aed, #d4a020)", color: "#fff" }}
+              className="w-9 h-9 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors"
               data-testid="button-new-message"
+              aria-label="Nowa wiadomość"
             >
-              <Plus className="w-4 h-4" />
-              Nowa
+              <Plus className="w-5 h-5" />
             </button>
           </div>
 
@@ -389,16 +388,12 @@ export default function MessagesPage() {
 
           {/* Filter chips */}
           {!showUserResults && (
-            <div className="flex gap-1 bg-secondary/40 rounded-2xl p-1 mt-1">
+            <div className="flex gap-2 pb-1">
               {FILTERS.map(f => (
                 <button
                   key={f.key}
                   onClick={() => setFilter(f.key)}
-                  className="flex-1 relative py-2 rounded-xl text-[13px] font-bold tracking-wider transition-all"
-                  style={{
-                    background: filter === f.key ? "rgba(180,141,255,0.15)" : "transparent",
-                    color: filter === f.key ? "#9333ea" : "var(--color-muted-foreground)",
-                  }}
+                  className={`px-3.5 py-1.5 rounded-full text-[13px] font-bold uppercase tracking-wider transition-colors ${filter === f.key ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground border border-border hover:border-primary/30"}`}
                   data-testid={`filter-${f.key}`}
                 >
                   {f.label}{f.key === "unread" && totalUnread > 0 ? ` (${totalUnread})` : ""}
