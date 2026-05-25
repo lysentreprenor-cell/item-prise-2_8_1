@@ -57,13 +57,6 @@ import SavingsGoals from "@/pages/SavingsGoals";
 import KYCVerification from "@/pages/KYCVerification";
 import ReferralProgram from "@/pages/ReferralProgram";
 import LoanFlow from "@/pages/LoanFlow";
-import ResellDashboard from "@/pages/resell/index";
-import ResellAddProduct from "@/pages/resell/AddProduct";
-import ResellAnalysis from "@/pages/resell/Analysis";
-import ResellCalculator from "@/pages/resell/Calculator";
-import ResellCompliance from "@/pages/resell/Compliance";
-import ResellGenerator from "@/pages/resell/GeneratorPage";
-import ResellHistory from "@/pages/resell/HistoryPage";
 
 function AuthSplash() {
   return (
@@ -96,23 +89,6 @@ function AuthSplash() {
   );
 }
 
-function ResellRouter() {
-  return (
-    <div style={{ width: "100%", minHeight: "100dvh", background: "#0a0a14" }}>
-      <Switch>
-        <Route path="/" component={ResellDashboard} />
-        <Route path="/resell" component={ResellDashboard} />
-        <Route path="/resell/add" component={ResellAddProduct} />
-        <Route path="/resell/analysis/:id" component={ResellAnalysis} />
-        <Route path="/resell/calculator" component={ResellCalculator} />
-        <Route path="/resell/compliance" component={ResellCompliance} />
-        <Route path="/resell/generator" component={ResellGenerator} />
-        <Route path="/resell/history" component={ResellHistory} />
-      </Switch>
-    </div>
-  );
-}
-
 function Router() {
   const { isAuthenticated, authLoading, user } = useAppStore();
   const { isEnabled } = useFeatures();
@@ -124,11 +100,6 @@ function Router() {
       setLocation("/");
     }
   }, [isAuthenticated, location, setLocation]);
-
-  // Resell Assistant is publicly accessible at / and /resell/* — no login required
-  if (location === "/" || location === "/resell" || location.startsWith("/resell/")) {
-    return <ResellRouter />;
-  }
 
   // While /api/me is in flight, show a neutral splash so no auth screen flashes.
   // AnimatePresence handles the fade-out when authLoading → false.
