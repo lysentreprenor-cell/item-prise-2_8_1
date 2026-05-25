@@ -64,6 +64,7 @@ import ResellCalculator from "@/pages/resell/Calculator";
 import ResellCompliance from "@/pages/resell/Compliance";
 import ResellGenerator from "@/pages/resell/GeneratorPage";
 import ResellHistory from "@/pages/resell/HistoryPage";
+import { ResellLayout } from "@/pages/resell/ResellLayout";
 
 function AuthSplash() {
   return (
@@ -98,7 +99,7 @@ function AuthSplash() {
 
 function ResellRouter() {
   return (
-    <div style={{ width: "100%", minHeight: "100dvh", background: "#0a0a14" }}>
+    <ResellLayout>
       <Switch>
         <Route path="/" component={ResellDashboard} />
         <Route path="/resell" component={ResellDashboard} />
@@ -109,7 +110,7 @@ function ResellRouter() {
         <Route path="/resell/generator" component={ResellGenerator} />
         <Route path="/resell/history" component={ResellHistory} />
       </Switch>
-    </div>
+    </ResellLayout>
   );
 }
 
