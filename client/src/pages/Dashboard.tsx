@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import {
   Sparkles, ArrowDownLeft, MoreHorizontal,
   ArrowUpRight, Eye, EyeOff, ArrowLeftRight, Loader2,
-  Send, FileText, Plus, ChevronRight, Clock, Target, BarChart2, TrendingDown,
+  Send, FileText, Plus, ChevronRight, Clock, Target, BarChart2, TrendingDown, TrendingUp,
 } from "lucide-react";
 import { useAppStore, CurrencyCode, CURRENCY_SYMBOLS, WALLET_FLAGS, formatMoney, formatMoneyCompact, getCurrencyName, CORE_WALLET_CURRENCIES } from "@/lib/store";
 import { luxuryTheme, luxuryGradients } from "@/theme/luxuryTheme";
