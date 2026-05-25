@@ -1,29 +1,13 @@
 import React from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { ProfitCalculator } from "@/components/resell/ProfitCalculator";
 
 export default function CalculatorPage() {
   const [, setLocation] = useLocation();
 
   return (
-    <div style={{ minHeight: "100dvh", background: "linear-gradient(160deg, #0d0010 0%, #080014 40%, #0a0a14 100%)", fontFamily: "'Outfit','Inter',sans-serif" }}>
-      {/* Nav */}
-      <div style={{
-        background: "rgba(0,0,0,0.45)", backdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(139,92,246,0.15)",
-        padding: "0 24px", position: "sticky", top: 0, zIndex: 50,
-      }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", height: 60, gap: 14 }}>
-          <button onClick={() => setLocation("/resell")} style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 600 }}>
-            <ArrowLeft size={15} /> Powrót
-          </button>
-          <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.10)" }} />
-          <span style={{ color: "#fff", fontWeight: 800, fontSize: 15 }}>Kalkulator zysku</span>
-        </div>
-      </div>
-
-      <div style={{ maxWidth: 820, margin: "0 auto", padding: "40px 24px 80px" }}>
+    <div style={{ padding: "28px 0 80px" }}>
         <h1 style={{ color: "#fff", fontSize: 26, fontWeight: 900, marginBottom: 6 }}>Kalkulator zysku</h1>
         <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginBottom: 32 }}>
           Przeciągnij suwaki, wpisz ceny i sprawdź zysk netto w PLN, USD, EUR i NOK.
@@ -72,7 +56,6 @@ export default function CalculatorPage() {
             </button>
           </div>
         </div>
-      </div>
     </div>
   );
 }
