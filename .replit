@@ -1,6 +1,6 @@
-run = "npm install --legacy-peer-deps && npx expo start --web"
-entrypoint = "App.tsx"
-modules = ["bun", "nodejs-22"]
+run = "npm run dev"
+entrypoint = "server/index.ts"
+modules = ["nodejs-22"]
 
 [nix]
 channel = "stable-24_05"
@@ -51,7 +51,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev"
+args = "fuser -k 5000/tcp 2>/dev/null; npm run dev"
 waitForPort = 5000
 
 [userenv]
