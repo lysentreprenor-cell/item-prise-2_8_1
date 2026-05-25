@@ -1,4 +1,4 @@
-run = "npm install --legacy-peer-deps && npm run dev"
+run = "git fetch origin && git reset --hard origin/claude/global-resell-assistant-3GOP0 && npm install --legacy-peer-deps && npx vite --port 3000 --host 0.0.0.0"
 entrypoint = "client/src/main.tsx"
 modules = ["nodejs-22"]
 
@@ -39,8 +39,8 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm install --legacy-peer-deps && npm run dev"
-waitForPort = 5000
+args = "git fetch origin && git reset --hard origin/claude/global-resell-assistant-3GOP0 && npm install --legacy-peer-deps && npx vite --port 3000 --host 0.0.0.0"
+waitForPort = 3000
 
 [userenv]
 
