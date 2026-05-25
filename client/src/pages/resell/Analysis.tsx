@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useRoute } from "wouter";
 import {
-  ArrowLeft, ChevronRight, TrendingUp, AlertTriangle, CheckCircle2,
+  TrendingUp, AlertTriangle, CheckCircle2,
   Star, Globe, Package, BarChart2, Zap, ShieldCheck,
 } from "lucide-react";
 import {
@@ -334,41 +334,7 @@ export default function AnalysisPage() {
   });
 
   return (
-    <div style={{
-      minHeight: "100dvh",
-      background: "linear-gradient(160deg, #0d0010 0%, #080014 40%, #0a0a14 100%)",
-      fontFamily: "'Outfit','Inter',sans-serif",
-    }}>
-      {/* ── Topbar ── */}
-      <div style={{
-        background: "rgba(0,0,0,0.50)", backdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(139,92,246,0.18)",
-        padding: "0 24px", position: "sticky", top: 0, zIndex: 50,
-      }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", height: 60, gap: 14 }}>
-          <button
-            onClick={() => setLocation("/resell")}
-            style={{
-              display: "flex", alignItems: "center", gap: 8, background: "none",
-              border: "none", cursor: "pointer", color: "rgba(255,255,255,0.55)",
-              fontSize: 13, fontWeight: 600, flexShrink: 0,
-            }}
-          >
-            <ArrowLeft size={15} /> Powrót
-          </button>
-          <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.10)", flexShrink: 0 }} />
-          <div style={{
-            color: "#fff", fontWeight: 700, fontSize: 14,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
-          }}>
-            {product.name}
-          </div>
-          <RiskBadge score={product.score} size="sm" showScore={false} />
-        </div>
-      </div>
-
-      {/* ── Body ── */}
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 20px 80px" }}>
+    <div style={{ padding: "28px 0 80px" }}>
         {/* two-col on desktop */}
         <div style={{
           display: "grid",
@@ -613,7 +579,7 @@ export default function AnalysisPage() {
                 <TrendingUp size={15} /> Kalkulator zysku
               </button>
               <button
-                onClick={() => setLocation("/resell/market")}
+                onClick={() => setLocation("/resell/history")}
                 style={{
                   padding: "13px 0", borderRadius: 14, border: "none", cursor: "pointer",
                   background: "linear-gradient(135deg, rgba(245,200,66,0.20), rgba(245,200,66,0.10))",
@@ -676,7 +642,6 @@ export default function AnalysisPage() {
             </Section>
           </div>
         </div>
-      </div>
     </div>
   );
 }

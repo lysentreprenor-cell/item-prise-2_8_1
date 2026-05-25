@@ -187,7 +187,7 @@ export default function ResellDashboard() {
   }, 0);
 
   return (
-    <div style={{ padding: "32px 28px 80px", maxWidth: 900, width: "100%", boxSizing: "border-box" }}>
+    <div style={{ padding: "28px 0 80px" }}>
 
       {/* Hero header */}
       <div style={{ marginBottom: 32 }}>
