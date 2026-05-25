@@ -1,5 +1,6 @@
 import "./envValidate";
 import express, { type Request, Response, NextFunction } from "express";
+import compression from "compression";
 import { registerRoutes } from "./routes";
 import { registerHealthSecretsRoute } from "./routes/healthSecrets";
 import { installAuthFix } from "./replitAuthFix";
@@ -21,6 +22,7 @@ import messagesRouter from "./routes/messages";
 import usersRouter from "./routes/users";
 
 const app = express();
+app.use(compression());
 const httpServer = createServer(app);
 
 // Stały znacznik wersji — generowany raz przy starcie serwera

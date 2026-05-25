@@ -11,7 +11,7 @@ import { MessageBadgeProvider } from "@/context/MessageBadgeContext";
 import { WsProvider } from "@/context/WsContext";
 import { NotificationBadgeProvider } from "@/context/NotificationBadgeContext";
 import { useFeatures } from "@/hooks/useFeatures";
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { MessageSquare } from "lucide-react";
@@ -20,43 +20,44 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import Dashboard from "@/pages/Dashboard";
 import Auth from "@/pages/Auth";
-import Cards from "@/pages/Cards";
-import CardLimits from "@/pages/CardLimits";
-import PhysicalCard from "@/pages/PhysicalCard";
-import Transfer from "@/pages/Transfer";
-import ContactSelection from "@/pages/ContactSelection";
-import TransferFlow from "@/pages/TransferFlow";
-import ContractInviteFlow from "@/pages/ContractInviteFlow";
-import InvitePersonFlow from "@/pages/InvitePersonFlow";
-import MessagesPage from "@/pages/Messages";
-import NewMessage from "@/pages/Messages/NewMessage";
-import ChatThread from "@/pages/Messages/ChatThread";
-import Profile from "@/pages/Profile";
-import AccountDetails from "@/pages/AccountDetails";
-import Notifications from "@/pages/Notifications";
-import NotificationCenter from "@/pages/NotificationCenter";
-import Support from "@/pages/Support";
-import Security from "@/pages/Security";
-import Preferences from "@/pages/Preferences";
-import History from "@/pages/History";
-import TransactionDetails from "@/pages/TransactionDetails";
-import Invest from "@/pages/Invest";
-import BudgetForecast from "@/pages/BudgetForecast";
-import NotFound from "@/pages/not-found";
-import AdminDashboard from "@/pages/AdminDashboard";
-import UserDirectory from "@/pages/UserDirectory";
-import VerifyEmail from "@/pages/VerifyEmail";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
-import WalletTopUp from "@/pages/WalletTopUp";
-import Agreements from "@/pages/Agreements";
-import AgreementNew from "@/pages/AgreementNew";
-import AgreementDetail from "@/pages/AgreementDetail";
-import SplitBill from "@/pages/SplitBill";
-import RecurringPayments from "@/pages/RecurringPayments";
-import SavingsGoals from "@/pages/SavingsGoals";
-import KYCVerification from "@/pages/KYCVerification";
-import ReferralProgram from "@/pages/ReferralProgram";
-import LoanFlow from "@/pages/LoanFlow";
+
+const Cards               = lazy(() => import("@/pages/Cards"));
+const CardLimits          = lazy(() => import("@/pages/CardLimits"));
+const PhysicalCard        = lazy(() => import("@/pages/PhysicalCard"));
+const Transfer            = lazy(() => import("@/pages/Transfer"));
+const ContactSelection    = lazy(() => import("@/pages/ContactSelection"));
+const TransferFlow        = lazy(() => import("@/pages/TransferFlow"));
+const ContractInviteFlow  = lazy(() => import("@/pages/ContractInviteFlow"));
+const InvitePersonFlow    = lazy(() => import("@/pages/InvitePersonFlow"));
+const MessagesPage        = lazy(() => import("@/pages/Messages"));
+const NewMessage          = lazy(() => import("@/pages/Messages/NewMessage"));
+const ChatThread          = lazy(() => import("@/pages/Messages/ChatThread"));
+const Profile             = lazy(() => import("@/pages/Profile"));
+const AccountDetails      = lazy(() => import("@/pages/AccountDetails"));
+const Notifications       = lazy(() => import("@/pages/Notifications"));
+const NotificationCenter  = lazy(() => import("@/pages/NotificationCenter"));
+const Support             = lazy(() => import("@/pages/Support"));
+const Security            = lazy(() => import("@/pages/Security"));
+const Preferences         = lazy(() => import("@/pages/Preferences"));
+const History             = lazy(() => import("@/pages/History"));
+const TransactionDetails  = lazy(() => import("@/pages/TransactionDetails"));
+const Invest              = lazy(() => import("@/pages/Invest"));
+const BudgetForecast      = lazy(() => import("@/pages/BudgetForecast"));
+const NotFound            = lazy(() => import("@/pages/not-found"));
+const AdminDashboard      = lazy(() => import("@/pages/AdminDashboard"));
+const UserDirectory       = lazy(() => import("@/pages/UserDirectory"));
+const VerifyEmail         = lazy(() => import("@/pages/VerifyEmail"));
+const WalletTopUp         = lazy(() => import("@/pages/WalletTopUp"));
+const Agreements          = lazy(() => import("@/pages/Agreements"));
+const AgreementNew        = lazy(() => import("@/pages/AgreementNew"));
+const AgreementDetail     = lazy(() => import("@/pages/AgreementDetail"));
+const SplitBill           = lazy(() => import("@/pages/SplitBill"));
+const RecurringPayments   = lazy(() => import("@/pages/RecurringPayments"));
+const SavingsGoals        = lazy(() => import("@/pages/SavingsGoals"));
+const KYCVerification     = lazy(() => import("@/pages/KYCVerification"));
+const ReferralProgram     = lazy(() => import("@/pages/ReferralProgram"));
+const LoanFlow            = lazy(() => import("@/pages/LoanFlow"));
 
 function AuthSplash() {
   return (
@@ -121,6 +122,7 @@ function Router() {
 
   return (
     <div data-scroll-root className="w-full max-w-md mx-auto h-[100dvh] max-h-[100dvh] bg-background relative sm:shadow-2xl sm:border-x border-border/40 overflow-x-hidden overflow-y-auto flex flex-col transition-colors duration-500">
+      <Suspense fallback={<AuthSplash />}>
       <Switch>
         <Route path="/auth" component={() => { useEffect(() => setLocation("/"), []); return null; }} />
         <Route path="/" component={Dashboard} />
@@ -162,6 +164,7 @@ function Router() {
         <Route path="/verify-email" component={VerifyEmail} />
         <Route component={NotFound} />
       </Switch>
+      </Suspense>
       <BottomNav />
     </div>
   );
