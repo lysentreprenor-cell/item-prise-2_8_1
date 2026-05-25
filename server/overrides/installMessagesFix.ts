@@ -399,6 +399,7 @@ export function installMessagesFix(app: Express, pool: Pool, httpServer?: HttpSe
   // ── WebSocket server ──────────────────────────────────────────────────────
   if (httpServer) {
     const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
+    wss.on("error", (err) => { console.error("[wss] error:", err.message); });
 
     wss.on("connection", async (ws, req) => {
       const cookieHeader = req.headers.cookie || "";
