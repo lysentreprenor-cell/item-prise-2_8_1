@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { ref as dbRef, onValue, off, set, push } from "firebase/database";
+import { ref as dbRef, onValue, set, push } from "firebase/database";
 import { realtimeDb } from "@/lib/firebase";
 import { useAppStore, formatMoney, type CurrencyCode } from "@/lib/store";
 import { useLang } from "@/context/LanguageContext";
@@ -110,7 +110,7 @@ export default function AgreementDetail() {
     const msgRef  = dbRef(realtimeDb, `agreementMessages/${id}`);
     const crRef   = dbRef(realtimeDb, `agreementChangeRequests/${id}`);
 
-    onValue(agRef, snap => {
+    const unsubAg = onValue(agRef, snap => {
       if (!isMounted.current) return;
       if (snap.exists()) {
         setAgreement({ ...snap.val() as Agreement, id: id! });
@@ -121,7 +121,7 @@ export default function AgreementDetail() {
       }
     });
 
-    onValue(evRef, snap => {
+    const unsubEv = onValue(evRef, snap => {
       if (!isMounted.current) return;
       if (snap.exists()) {
         const raw = snap.val() as Record<string, Omit<AgreementEvent, "id">>;
@@ -130,7 +130,7 @@ export default function AgreementDetail() {
       }
     });
 
-    onValue(msgRef, snap => {
+    const unsubMsg = onValue(msgRef, snap => {
       if (!isMounted.current) return;
       if (snap.exists()) {
         const rawM = snap.val() as Record<string, Omit<AgreementMessage, "id">>;
@@ -139,7 +139,7 @@ export default function AgreementDetail() {
       }
     });
 
-    onValue(crRef, snap => {
+    const unsubCr = onValue(crRef, snap => {
       if (!isMounted.current) return;
       if (snap.exists()) {
         const raw = snap.val() as Record<string, Omit<ChangeRequest, "id">>;
@@ -155,7 +155,7 @@ export default function AgreementDetail() {
 
     return () => {
       isMounted.current = false;
-      off(agRef); off(evRef); off(msgRef); off(crRef);
+      unsubAg(); unsubEv(); unsubMsg(); unsubCr();
     };
   }, [id]);
 
@@ -196,7 +196,7 @@ export default function AgreementDetail() {
         });
       }
     });
-    return () => off(profileRef);
+    return () => unsub();
   }, [agreement?.workerUid]);
 
   useEffect(() => {
@@ -206,7 +206,7 @@ export default function AgreementDetail() {
       if (!isMounted.current) return;
       setHasRated(snap.exists() && snap.val() === true);
     });
-    return () => off(ratedRef);
+    return () => unsub();
   }, [user?.id, id, agreement?.status]);
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useWsContext } from "@/context/WsContext";
-import {get, off, onValue, ref, set} from "firebase/database";
+import {get, onValue, ref, set} from "firebase/database";
 import {realtimeDb} from "@/lib/firebase";
 import { useLocation, useParams } from "wouter";
 import {
@@ -457,7 +457,7 @@ export default function ChatThread() {
       if (!signal?.convId || signal.convId !== id) return;
       loadThreadRef.current(true);
     });
-    return () => off(inboxRef, "value", unsub);
+    return () => unsub();
   }, [user?.id, sessionConfirmed, id]);
 
   // ── Data loading ──────────────────────────────────────────────────────────

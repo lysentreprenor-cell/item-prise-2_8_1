@@ -47,7 +47,7 @@ interface PaymentProvider {
 }
 
 function generateReference(): string {
-  return `TRX-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+  return `TRX-${crypto.randomUUID().replace(/-/g,"").slice(0,8).toUpperCase()}`;
 }
 
 class SandboxPaymentProvider implements PaymentProvider {

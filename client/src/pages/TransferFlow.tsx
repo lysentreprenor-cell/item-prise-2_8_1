@@ -989,7 +989,7 @@ export default function TransferFlow() {
     const result = await sendMoney(numAmount, initialRecipient, "Wysłano przez aplikację", currency, riskAck, pinToken);
     setIsProcessing(false);
     if (result.success) {
-      setReference(`TRX-${Math.random().toString(36).slice(2, 10).toUpperCase()}`);
+      setReference(`TRX-${crypto.randomUUID().replace(/-/g,"").slice(0,8).toUpperCase()}`);
       if (result.riskLevel === "medium") {
         toast({ title: "Przelew wysłany — Uwaga", description: "To wygląda na nietypową operację. Sprawdź dane przed potwierdzeniem.", variant: "destructive" });
       }

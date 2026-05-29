@@ -340,7 +340,7 @@ function addContractEvent(contractId: string, event: Omit<ActivityEvent, "id" | 
     const idx = existing.findIndex(c => c.contractId === contractId);
     if (idx >= 0) {
       existing[idx].events = existing[idx].events || [];
-      existing[idx].events.unshift({ ...event, id: Math.random().toString(36).slice(2), timestamp: new Date().toISOString() });
+      existing[idx].events.unshift({ ...event, id: crypto.randomUUID().replace(/-/g,""), timestamp: new Date().toISOString() });
       localStorage.setItem(LS_CONTRACTS_KEY, JSON.stringify(existing));
     }
   } catch {}
@@ -1128,7 +1128,7 @@ export default function AgreementNew() {
   const [contractPhase, setContractPhase] = useState<
     "" | "awaiting_counterparty" | "awaiting_deposit" | "in_progress" | "awaiting_release" | "completed"
   >("");
-  const [contractId, setContractId] = useState(() => loadDraft()?.contractId ?? `UMW-${new Date().getFullYear()}-${Math.floor(Math.random() * 9000 + 1000)}`);
+  const [contractId, setContractId] = useState(() => loadDraft()?.contractId ?? `UMW-${new Date().getFullYear()}-${(parseInt(crypto.randomUUID().replace(/-/g,''),16)%9000+1000)}`);
   const [invitationDismissed, setInvitationDismissed] = useState(false);
   const [showDocument, setShowDocument] = useState(false);
   const [ratingDone, setRatingDone] = useState(false);
@@ -1165,12 +1165,12 @@ export default function AgreementNew() {
       existing[idx].updatedAt = now;
       existing[idx].events = existing[idx].events || [];
       const ev = PHASE_EVENTS[contractPhase];
-      if (ev) existing[idx].events.unshift({ ...ev, id: Math.random().toString(36).slice(2), timestamp: now, type: "phase_change" });
+      if (ev) existing[idx].events.unshift({ ...ev, id: crypto.randomUUID().replace(/-/g,""), timestamp: now, type: "phase_change" });
       try { localStorage.setItem(LS_CONTRACTS_KEY, JSON.stringify(existing)); } catch {}
       setContractEvents([...existing[idx].events]);
     } else {
       const ev = PHASE_EVENTS[contractPhase];
-      const initEvents: ActivityEvent[] = ev ? [{ ...ev, id: Math.random().toString(36).slice(2), timestamp: now, type: "phase_change" }] : [];
+      const initEvents: ActivityEvent[] = ev ? [{ ...ev, id: crypto.randomUUID().replace(/-/g,""), timestamp: now, type: "phase_change" }] : [];
       const contract: SavedContract = {
         id: contractId, contractId, data,
         totalPrice: calcTotal(data),
@@ -1189,7 +1189,7 @@ export default function AgreementNew() {
   const update = (patch: Partial<WizardData>) => setData(prev => ({ ...prev, ...patch }));
 
   const startNewWizard = () => {
-    const newId = `UMW-${new Date().getFullYear()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+    const newId = `UMW-${new Date().getFullYear()}-${(parseInt(crypto.randomUUID().replace(/-/g,''),16)%9000+1000)}`;
     setContractId(newId);
     setData({ ...INITIAL, currency: defaultCurrency });
     setStepIndex(0);
@@ -1202,7 +1202,7 @@ export default function AgreementNew() {
   };
 
   const startFromTemplate = (preset: Partial<WizardData>) => {
-    const newId = `UMW-${new Date().getFullYear()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+    const newId = `UMW-${new Date().getFullYear()}-${(parseInt(crypto.randomUUID().replace(/-/g,''),16)%9000+1000)}`;
     setContractId(newId);
     setData({ ...INITIAL, currency: defaultCurrency, ...preset });
     // Skip rola/kategoria/podkategoria since template pre-fills them — go to strony

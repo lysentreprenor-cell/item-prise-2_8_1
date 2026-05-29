@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
-import { ref, get, set, onValue, off } from "firebase/database";
+import { ref, get, set, onValue } from "firebase/database";
 import { realtimeDb } from "@/lib/firebase";
 import { StorageKeys } from "./localStore";
 import { registerDevice as _registerDevice } from "./deviceFingerprint";
@@ -652,7 +652,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user?.id) return;
     const transferRef = ref(realtimeDb, `transfers/inbox/${user.id}`);
     const unsub = onValue(transferRef, () => { syncData().catch(() => {}); });
-    return () => off(transferRef, "value", unsub);
+    return () => unsub();
   }, [user?.id, syncData]);
 
   const login = (userData: any) => {
@@ -800,7 +800,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         // Add local transaction record
         const newTx: Transaction = {
-          id: Math.random().toString(36).substr(2, 9),
+          id: crypto.randomUUID().replace(/-/g,"").slice(0,9),
           type: "send", status: "completed",
           amount: -amount, title: targetName,
           subtitle: note || "Transfer",
@@ -810,7 +810,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         // Add transfer message to conversation
         const transferMessage: Message = {
-          id: Math.random().toString(36).substr(2, 9),
+          id: crypto.randomUUID().replace(/-/g,"").slice(0,9),
           senderId: "user",
           text: note || "Sent a transfer",
           timestamp: new Date().toISOString(),
@@ -822,7 +822,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (idx >= 0) {
             return prev.map((c, i) => i === idx ? { ...c, messages: [...c.messages, transferMessage] } : c);
           }
-          const newConvoId = `c_${Math.random().toString(36).substr(2, 6)}`;
+          const newConvoId = `c_${crypto.randomUUID().replace(/-/g,"").slice(0,6)}`;
           return [{ id: newConvoId, contactId: newConvoId, contactName: targetName || recipient, contactHandle: recipient, unreadCount: 0, messages: [transferMessage] }, ...prev];
         });
 
@@ -846,7 +846,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addMoney = (amount: number) => {
     if (!user) return;
     const newTx: Transaction = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID().replace(/-/g,"").slice(0,9),
       type: "topup",
       status: "completed",
       amount: amount,
@@ -895,7 +895,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addNotification = (notif: Omit<Notification, "id" | "date" | "read">) => {
     const newNotif: Notification = {
       ...notif,
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID().replace(/-/g,"").slice(0,9),
       date: new Date().toISOString(),
       read: false
     };
@@ -912,7 +912,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const sendMessage = (conversationId: string, text: string) => {
     const newMessage: Message = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID().replace(/-/g,"").slice(0,9),
       senderId: user?.id ?? "user",
       text,
       timestamp: new Date().toISOString(),
@@ -961,7 +961,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const openConversation = (handle: string, name: string): string => {
     const existing = conversations.find(c => c.contactHandle.toLowerCase() === handle.toLowerCase());
     if (existing) return existing.id;
-    const newId = `c_${Math.random().toString(36).substr(2, 9)}`;
+    const newId = `c_${crypto.randomUUID().replace(/-/g,"").slice(0,9)}`;
     const newConvo: Conversation & { messages: Message[] } = {
       id: newId,
       contactId: newId,
@@ -976,12 +976,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const createSupportTicket = (title: string, message: string, attachments?: string[]) => {
     const newTicket: SupportTicket = {
-      id: "t_" + Math.random().toString(36).substr(2, 9),
+      id: "t_" + crypto.randomUUID().replace(/-/g,"").slice(0,9),
       title,
       status: "open",
       updatedAt: new Date().toISOString(),
       messages: [{
-        id: "m_" + Math.random().toString(36).substr(2, 9),
+        id: "m_" + crypto.randomUUID().replace(/-/g,"").slice(0,9),
         senderId: "user",
         text: message,
         timestamp: new Date().toISOString(),
@@ -1007,7 +1007,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           status: t.status === "closed" || t.status === "resolved" ? "open" as const : t.status,
           updatedAt: new Date().toISOString(),
           messages: [...t.messages, {
-            id: "m_" + Math.random().toString(36).substr(2, 9),
+            id: "m_" + crypto.randomUUID().replace(/-/g,"").slice(0,9),
             senderId: "user",
             text,
             timestamp: new Date().toISOString(),
@@ -1111,7 +1111,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (user) {
       const subtitle = `${formatMoney(amount, from)} → ${formatMoney(received, to)}`;
       const newTx: Transaction = {
-        id: Math.random().toString(36).substr(2, 9),
+        id: crypto.randomUUID().replace(/-/g,"").slice(0,9),
         type: "payment",
         status: "completed",
         amount: -amount,

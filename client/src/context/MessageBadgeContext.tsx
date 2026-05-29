@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useWsContext } from "@/context/WsContext";
-import { ref, onValue, off } from "firebase/database";
+import { ref, onValue } from "firebase/database";
 import { realtimeDb } from "@/lib/firebase";
 
 type MessageBadgeContextValue = {
@@ -64,7 +64,7 @@ export function MessageBadgeProvider({ children, isAuthenticated, userId }: { ch
       if (!snap.exists() || !isMounted.current) return;
       refreshUnread();
     });
-    return () => off(inboxRef, "value", unsub);
+    return () => unsub();
   }, [isAuthenticated, userId, refreshUnread]);
 
   // ── WS fallback (typing / read events) ────────────────────────────────────

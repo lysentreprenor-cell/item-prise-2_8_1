@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { ArrowLeft, Plus, FileText, Clock, AlertCircle, CheckCircle2, Loader2, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { ref, onValue, off } from "firebase/database";
+import { ref, onValue } from "firebase/database";
 import { realtimeDb } from "@/lib/firebase";
 import { useAppStore, formatMoney, type CurrencyCode } from "@/lib/store";
 import { useLang } from "@/context/LanguageContext";
@@ -99,6 +99,10 @@ export default function Agreements() {
     let isMounted = true;
 
     const unsubscribe = onValue(userAgreementsRef, async (snap) => {
+      // Clean up per-agreement listeners before rebuilding them
+      listenersRef.current.forEach(fn => fn());
+      listenersRef.current = [];
+
       if (!snap.exists() || !isMounted) {
         if (isMounted) { setAgreements([]); setLoading(false); }
         return;
@@ -109,7 +113,6 @@ export default function Agreements() {
         return;
       }
 
-      const results: Agreement[] = [];
       let pending = ids.length;
 
       ids.forEach(id => {
@@ -129,13 +132,13 @@ export default function Agreements() {
           pending--;
           if (pending === 0 && isMounted) setLoading(false);
         });
-        listenersRef.current.push(() => off(agRef));
+        listenersRef.current.push(agUnsub);
       });
     });
 
     return () => {
       isMounted = false;
-      off(userAgreementsRef);
+      unsubscribe();
       listenersRef.current.forEach(fn => fn());
       listenersRef.current = [];
     };

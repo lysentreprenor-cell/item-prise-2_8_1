@@ -12,7 +12,7 @@ import UserHandleText from "@/components/UserHandleText";
 import { useAdminStats } from "@/hooks/useAdminStats";
 import AdminQuickPanel from "@/components/AdminQuickPanel";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
-import { ref as dbRef, onValue, off } from "firebase/database";
+import { ref as dbRef, onValue } from "firebase/database";
 import { realtimeDb } from "@/lib/firebase";
 
 export default function Profile() {
@@ -39,7 +39,7 @@ export default function Profile() {
     isMounted.current = true;
     if (!user?.id) return;
     const profileRef = dbRef(realtimeDb, `users/${user.id}/profile`);
-    onValue(profileRef, snap => {
+    const unsub = onValue(profileRef, snap => {
       if (!isMounted.current) return;
       if (snap.exists()) {
         const p = snap.val() as {
@@ -67,7 +67,7 @@ export default function Profile() {
     });
     return () => {
       isMounted.current = false;
-      off(profileRef);
+      unsub();
     };
   }, [user?.id]);
 

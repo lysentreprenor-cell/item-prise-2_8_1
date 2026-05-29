@@ -4,7 +4,7 @@ import { Search, Plus, MessageSquare, Loader2, X, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore } from "@/lib/store";
 import { useWsContext } from "@/context/WsContext";
-import { ref, onValue, off } from "firebase/database";
+import { ref, onValue } from "firebase/database";
 import { realtimeDb } from "@/lib/firebase";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -210,7 +210,7 @@ export default function MessagesPage() {
       if (!snap.exists() || !isMounted.current) return;
       loadConversations(true);
     });
-    return () => off(inboxRef, "value", unsub);
+    return () => unsub();
   }, [user?.id, loadConversations]);
 
   useEffect(() => {
