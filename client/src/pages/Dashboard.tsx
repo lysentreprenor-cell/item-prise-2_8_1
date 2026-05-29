@@ -426,6 +426,36 @@ export default function Dashboard() {
                 {t.transfer}
               </button>
             </div>
+
+            {/* ── Umowy AI — green CTA ── */}
+            <button
+              data-testid="btn-ai-contracts"
+              onClick={() => setLocation("/ai-contracts")}
+              onMouseDown={e => { e.currentTarget.style.transform = "scale(0.97)"; }}
+              onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
+              onTouchStart={e => { e.currentTarget.style.transform = "scale(0.97)"; }}
+              onTouchEnd={e => { e.currentTarget.style.transform = "scale(1)"; }}
+              style={{
+                marginTop: 10, width: "100%", height: 50,
+                borderRadius: 999, border: "none", cursor: "pointer",
+                fontSize: 14, fontWeight: 800, letterSpacing: 0.3,
+                color: "#0a2016",
+                background: "linear-gradient(135deg, #34d399 0%, #10b981 60%, #059669 100%)",
+                boxShadow: "0 4px 18px rgba(52,211,153,0.38), inset 0 1px 0 rgba(255,255,255,0.25)",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                transition: "transform 0.15s ease",
+                position: "relative", overflow: "hidden",
+              }}
+            >
+              <div style={{
+                position: "absolute", top: 0, left: "20%", right: "20%", height: "45%",
+                background: "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, transparent 100%)",
+                borderRadius: "0 0 50% 50%", pointerEvents: "none",
+              }} />
+              <Sparkles size={16} />
+              Umowy AI
+            </button>
           </div>
         </div>
 

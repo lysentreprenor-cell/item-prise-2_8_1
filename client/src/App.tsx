@@ -58,6 +58,7 @@ import KYCVerification from "@/pages/KYCVerification";
 import ReferralProgram from "@/pages/ReferralProgram";
 import GlobalSearch from "@/pages/GlobalSearch";
 import PublicProfile from "@/pages/PublicProfile";
+import AIContracts from "@/pages/AIContracts";
 
 function AuthSplash() {
   return (
@@ -160,6 +161,7 @@ function Router() {
         <Route path="/kyc" component={KYCVerification} />
         <Route path="/referral" component={ReferralProgram} />
         <Route path="/verify-email" component={VerifyEmail} />
+        <Route path="/ai-contracts" component={AIContracts} />
         <Route path="/search" component={GlobalSearch} />
         <Route path="/u/:handle" component={PublicProfile} />
         <Route component={NotFound} />
