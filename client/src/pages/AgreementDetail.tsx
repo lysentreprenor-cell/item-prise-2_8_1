@@ -253,7 +253,7 @@ export default function AgreementDetail() {
       await set(dbRef(realtimeDb, `agreements/${id}/acceptance/workerAcceptedAt`), now);
       // Normalize legacy acceptance node: creator accepted by creating the agreement,
       // so ensure creatorAccepted is present so the node is never partially missing it.
-      if (!ag.acceptance?.creatorAccepted) {
+      if (ag.acceptance?.creatorAccepted === undefined) {
         await set(dbRef(realtimeDb, `agreements/${id}/acceptance/creatorAccepted`), true);
       }
       await updateStatus("accepted");

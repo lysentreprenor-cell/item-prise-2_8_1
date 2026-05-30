@@ -525,8 +525,6 @@ function StepSend({ data, contractText, onBack }: {
         acceptance: {
           creatorAccepted: true,
           creatorAcceptedAt: now,
-          workerAccepted: null,
-          workerAcceptedAt: null,
         },
         deposit: {
           enabled: depositEnabled,
