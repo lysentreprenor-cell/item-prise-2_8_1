@@ -357,7 +357,7 @@ const PHASE_EVENTS: Record<string, { label: string; icon: string }> = {
 // ——— CONTRACT TEMPLATES
 const TEMPLATES: { id: string; icon: string; label: string; desc: string; preset: Partial<WizardData> }[] = [
   {
-    id: "service", icon: "🔨", label: "Usługa", desc: "Praca, pomoc, naprawa",
+    id: "service", icon: "🛠️", label: "Usługa", desc: "Praca, pomoc, naprawa",
     preset: { category: "usluga", subcategory: "Inne", pricingMethod: "fixed", warranty: true, warrantyDays: 30, latePenalty: true, latePenaltyAmount: 100, requireApproval: true },
   },
   {
@@ -369,7 +369,7 @@ const TEMPLATES: { id: string; icon: string; label: string; desc: string; preset
     preset: { category: "sprzedaz", subcategory: "Samochód", pricingMethod: "fixed" },
   },
   {
-    id: "remont", icon: "🛠", label: "Remont", desc: "Malowanie, instalacje",
+    id: "remont", icon: "🔨", label: "Remont", desc: "Malowanie, instalacje",
     preset: { category: "remont", subcategory: "Generalny remont", pricingMethod: "stages", scopeBeforePhotos: true, warranty: true, warrantyDays: 365, latePenalty: true, latePenaltyAmount: 200 },
   },
   {
@@ -421,6 +421,10 @@ const CAT_LABELS: Record<string, string> = {
   usluga: "Usługa", remont: "Remont", sprzedaz: "Sprzedaż",
   wynajem: "Wynajem", wlasna: "Własna", wypozyczenie: "Wypożyczenie",
   korepetycje: "Korepetycje", opieka: "Opieka", rezerwacja: "Rezerwacja",
+};
+const CATEGORY_ICONS: Record<string, string> = {
+  usluga: "🛠️", remont: "🔨", sprzedaz: "🛍️", wynajem: "🏠",
+  wlasna: "📝", wypozyczenie: "🔑", korepetycje: "📚", opieka: "🐾", rezerwacja: "📋",
 };
 
 // ——— HOME SCREEN
@@ -736,7 +740,6 @@ function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContr
           </div>
           {visible.map(c => {
             const badge = deadlineBadge(c);
-            const catIcon: Record<string,string> = { usluga:"🛠️", remont:"🔨", sprzedaz:"🛍️", wynajem:"🏠", wlasna:"📝", wypozyczenie:"🔑", korepetycje:"📚", opieka:"🐾", rezerwacja:"📋" };
             const otherRole = c.data.myRole === "client"
               ? (c.data.category === "wynajem" ? "Wynajmujący" : c.data.category === "sprzedaz" ? "Sprzedający" : c.data.category === "wypozyczenie" ? "Wypożyczający" : "Wykonawca")
               : (c.data.category === "wynajem" ? "Najemca" : c.data.category === "sprzedaz" ? "Kupujący" : c.data.category === "wypozyczenie" ? "Pożyczający" : "Zamawiający");
@@ -747,7 +750,7 @@ function HomeScreen({ onNew, onResume, onTemplate, draft, contracts, onOpenContr
               <div key={c.id} onClick={() => onOpenContract(c)} style={{ background: "var(--color-card)", border: `1.5px solid ${badge === "overdue" ? "#dc2626" : badge === "soon" ? "#f59e0b" : "var(--color-border)"}`, borderRadius: 14, padding: "14px 16px", marginBottom: 10, cursor: "pointer" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                   <div style={{ flex: 1, minWidth: 0, display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <span style={{ fontSize: 22, flexShrink: 0, lineHeight: 1, marginTop: 1 }}>{catIcon[c.data.category] || "📄"}</span>
+                    <span style={{ fontSize: 22, flexShrink: 0, lineHeight: 1, marginTop: 1 }}>{CATEGORY_ICONS[c.data.category] || "📄"}</span>
                     <div style={{ minWidth: 0 }}>
                       <div title={c.data.customTitle || (c.data.category === "wypozyczenie" && c.data.loanItemName ? `🔑 ${c.data.loanItemName}` : c.data.subcategory ? `${CAT_LABELS[c.data.category] || "Umowa"} › ${c.data.subcategory}` : CAT_LABELS[c.data.category] || "Umowa")} style={{ color: "var(--color-foreground)", fontSize: 15, fontWeight: 700, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {c.data.customTitle || (c.data.category === "wypozyczenie" && c.data.loanItemName ? `🔑 ${c.data.loanItemName}` : c.data.subcategory ? `${CAT_LABELS[c.data.category] || "Umowa"} › ${c.data.subcategory}` : CAT_LABELS[c.data.category] || "Umowa")}
@@ -939,6 +942,8 @@ const PRICING_OPTIONS: Record<string, { value: string; label: string }[]> = {
   ],
   rezerwacja: [
     { value: "total", label: "Kwota zadatku / zaliczki" },
+    { value: "stages", label: "Płatność etapami (np. 20% + 80%)" },
+    { value: "fixed", label: "Pełna kwota z góry" },
   ],
 };
 
@@ -952,10 +957,6 @@ const DEPOSIT_COVERS_OPTIONS = [
   "Ostatnia rata", "Poprawki/usterki", "Kaucja za szkody",
 ];
 
-const CATEGORY_LABELS: Record<string, string> = {
-  usluga: "Usługa", remont: "Remont", sprzedaz: "Sprzedaż", wynajem: "Wynajem", wlasna: "Własna", wypozyczenie: "Wypożyczenie",
-  korepetycje: "Korepetycje", opieka: "Opieka", rezerwacja: "Rezerwacja",
-};
 
 // Module-level presets — defined once, not re-created on every render
 const HOUR_PRESETS = [
@@ -1428,7 +1429,7 @@ export default function AgreementNew() {
             </span>
             {data.category && (
               <span style={{ color: "var(--color-muted-foreground)", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {" · "}{CATEGORY_LABELS[data.category]}{data.subcategory ? ` › ${data.subcategory}` : ""}
+                {" · "}{CAT_LABELS[data.category]}{data.subcategory ? ` › ${data.subcategory}` : ""}
               </span>
             )}
           </div>
@@ -1546,7 +1547,7 @@ function StepRola({ data, update, goNext }: { data: WizardData; update: (p: Part
 
 // ——— STEP: Szczegóły wypożyczenia
 function StepSzczegolyWypozyczenia({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
-  const conditionOptions = ["Nowy", "Bardzo dobry", "Dobry", "Lekko używany", "Używany"];
+  const conditionOptions = CONDITIONS;
   return (
     <div>
       <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Przedmiot wypożyczenia</h2>
@@ -1919,17 +1920,12 @@ function StepArtystaDetails({ data, update }: { data: WizardData; update: (p: Pa
 
 // ——— STEP 1: Kategoria
 function StepKategoria({ data, update, goNext }: { data: WizardData; update: (p: Partial<WizardData>) => void; goNext: () => void }) {
-  const categories: { value: Category; label: string; icon: string }[] = [
-    { value: "usluga", label: "Usługa", icon: "🛠️" },
-    { value: "remont", label: "Remont", icon: "🔨" },
-    { value: "sprzedaz", label: "Sprzedaż", icon: "🛍️" },
-    { value: "wynajem", label: "Wynajem", icon: "🏠" },
-    { value: "wlasna", label: "Stwórz własną", icon: "📝" },
-    { value: "wypozyczenie", label: "Wypożyczenie", icon: "🔑" },
-    { value: "korepetycje", label: "Korepetycje", icon: "📚" },
-    { value: "opieka", label: "Opieka", icon: "🐾" },
-    { value: "rezerwacja", label: "Rezerwacja", icon: "📋" },
-  ];
+  const categoryOrder: Category[] = ["usluga", "remont", "sprzedaz", "wynajem", "wypozyczenie", "korepetycje", "opieka", "rezerwacja", "wlasna"];
+  const categories = categoryOrder.map(v => ({
+    value: v,
+    label: v === "wlasna" ? "Stwórz własną" : CAT_LABELS[v],
+    icon: CATEGORY_ICONS[v],
+  }));
   return (
     <div>
       <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Nowa umowa</h2>
@@ -2768,7 +2764,7 @@ function StepPomieszczenia({ data, update }: { data: WizardData; update: (p: Par
 }
 
 // ——— STEP 7b: Szczegóły sprzedaż/elektronika
-const CONDITIONS = ["Nowy", "Bardzo dobry", "Dobry", "Używany", "Uszkodzony"];
+const CONDITIONS = ["Nowy", "Bardzo dobry", "Dobry", "Lekko używany", "Używany", "Uszkodzony"];
 
 function SaleItemsEditor({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
   const items = data.saleItems;
@@ -3493,121 +3489,6 @@ function StepWarunki({ data, update }: { data: WizardData; update: (p: Partial<W
   );
 }
 
-// ——— STEP 12: Protokół odbioru
-function StepProtokol({ data, update }: { data: WizardData; update: (p: Partial<WizardData>) => void }) {
-  const isSale = data.category === "sprzedaz";
-  const isCar = isSale && data.subcategory === "Auto/pojazd";
-
-  if (isSale) {
-    const statuses = [
-      { value: "accepted" as ProtocolStatus, label: "Przekazano bez zastrzeżeń", color: "#22c55e" },
-      { value: "with_notes" as ProtocolStatus, label: "Przekazano z uwagami", color: "#f59e0b" },
-    ];
-    return (
-      <div>
-        <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>
-          {isCar ? "Protokół przekazania pojazdu" : "Potwierdzenie przekazania"}
-        </h2>
-        <p style={{ color: "var(--color-muted-foreground)", fontSize: 15, marginBottom: 16, lineHeight: 1.6 }}>
-          Kupujący potwierdza odbiór {isCar ? "pojazdu" : "przedmiotu"}.
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-          {statuses.map(s => {
-            const active = data.protocolStatus === s.value;
-            return (
-              <div key={s.value} onClick={() => update({ protocolStatus: s.value })} style={{ ...cardStyle(active), display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 12, height: 12, borderRadius: 6, background: s.color, flexShrink: 0 }} />
-                <span style={{ flex: 1, color: active ? "var(--color-primary)" : "var(--color-foreground)", fontSize: 15, fontWeight: active ? 700 : 400 }}>{s.label}</span>
-                <div style={{ width: 20, height: 20, borderRadius: 10, border: `2px solid ${active ? "var(--color-primary)" : "var(--color-border)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {active && <div style={{ width: 10, height: 10, borderRadius: 5, background: "var(--color-primary)" }} />}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {isCar && (
-          <div style={sectionCard}>
-            <SectionLabel>Przekazano przy odbiorze</SectionLabel>
-            <Toggle on={data.beforePhotos} onChange={v => update({ beforePhotos: v })} label="Kluczyki do pojazdu" />
-            <Toggle on={data.afterPhotos} onChange={v => update({ afterPhotos: v })} label="Dowód rejestracyjny" />
-            <Toggle on={data.releaseDeposit} onChange={v => update({ releaseDeposit: v })} label="Karta pojazdu (jeśli dotyczy)" />
-          </div>
-        )}
-
-        {data.protocolStatus === "with_notes" && (
-          <div style={{ marginBottom: 12 }}>
-            <SectionLabel>Uwagi przy przekazaniu</SectionLabel>
-            <textarea value={data.protocolDesc} onChange={e => update({ protocolDesc: e.target.value })} placeholder="Opisz uwagi..." style={textareaStyle} />
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Remont / Usługa / Wynajem — pełny protokół
-  const statuses: { value: ProtocolStatus; label: string; color: string }[] = [
-    { value: "accepted", label: "Odebrane bez uwag", color: "#22c55e" },
-    { value: "with_notes", label: "Odebrane z uwagami", color: "#f59e0b" },
-    { value: "needs_fixes", label: "Wymaga poprawek", color: "#ef4444" },
-    { value: "rejected", label: "Odrzucone", color: "#6b7280" },
-  ];
-  return (
-    <div>
-      <h2 style={{ color: "var(--color-foreground)", fontSize: 24, fontWeight: 800, marginBottom: 16 }}>
-        {data.category === "wynajem" ? "Protokół wydania i zwrotu" : "Protokół odbioru"}
-      </h2>
-      <div style={{ marginBottom: 16 }}>
-        <SectionLabel>Status odbioru</SectionLabel>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {statuses.map(s => {
-            const active = data.protocolStatus === s.value;
-            return (
-              <div key={s.value} onClick={() => update({ protocolStatus: s.value })} style={{ ...cardStyle(active), display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 12, height: 12, borderRadius: 6, background: s.color, flexShrink: 0 }} />
-                <span style={{ flex: 1, color: active ? "var(--color-primary)" : "var(--color-foreground)", fontSize: 14, fontWeight: active ? 700 : 400 }}>{s.label}</span>
-                <div style={{ width: 20, height: 20, borderRadius: 10, border: `2px solid ${active ? "var(--color-primary)" : "var(--color-border)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {active && <div style={{ width: 10, height: 10, borderRadius: 5, background: "var(--color-primary)" }} />}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      {data.protocolStatus === "rejected" && (
-        <div style={{ marginTop: 4, marginBottom: 12, padding: "12px 14px", borderRadius: 10, background: "rgba(107,114,128,0.08)", border: "1px solid #9ca3af" }}>
-          <div style={{ color: "var(--color-foreground)", fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Co dalej?</div>
-          <div style={{ color: "var(--color-muted-foreground)", fontSize: 13, lineHeight: 1.7 }}>
-            <div>• Opisz powód odrzucenia w polu poniżej</div>
-            <div>• Otwórz spór w panelu umowy (opcja po powrocie)</div>
-            <div>• Skontaktuj się z drugą stroną bezpośrednio</div>
-          </div>
-        </div>
-      )}
-      <div style={sectionCard}>
-        <Toggle on={data.beforePhotos} onChange={v => update({ beforePhotos: v })} label="Zdjęcia przed" />
-        <Toggle on={data.afterPhotos} onChange={v => update({ afterPhotos: v })} label="Zdjęcia po" />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <SectionLabel>Opis wykonania</SectionLabel>
-        <textarea value={data.protocolDesc} onChange={e => update({ protocolDesc: e.target.value })} placeholder="Opisz wykonane prace..." style={textareaStyle} />
-      </div>
-      {(data.protocolStatus === "with_notes" || data.protocolStatus === "needs_fixes") && (
-        <div style={{ marginBottom: 12 }}>
-          <SectionLabel>Lista usterek</SectionLabel>
-          <textarea value={data.protocolIssues} onChange={e => update({ protocolIssues: e.target.value })} placeholder="Wypisz usterki..." style={textareaStyle} />
-          <SectionLabel>Termin poprawek</SectionLabel>
-          <input type="date" value={data.protocolFixDeadline} onChange={e => update({ protocolFixDeadline: e.target.value })} style={inputStyle} />
-        </div>
-      )}
-      <div style={sectionCard}>
-        <Toggle on={data.releaseDeposit} onChange={v => update({ releaseDeposit: v })} label="Wypłata depozytu" />
-      </div>
-    </div>
-  );
-}
-
 // ——— STEP 13: Przegląd
 function StepPrzeglad({ data, steps, goToStep, warnings, totalPrice }: { data: WizardData; steps: { id: string; label: string }[]; goToStep: (i: number) => void; warnings: string[]; totalPrice: number }) {
   const [expanded, setExpanded] = useState<string[]>(["podstawy"]);
@@ -3909,7 +3790,7 @@ function StepPodpis({ data, update, onSign }: { data: WizardData; update: (p: Pa
 
 // ——— SHARE HELPER
 async function shareContract(contractId: string, data: WizardData, totalPrice: number) {
-  const category = (CATEGORY_LABELS as Record<string, string>)[data.category] ?? data.category;
+  const category = CAT_LABELS[data.category] ?? data.category;
   const sub = data.category === "wypozyczenie" && data.loanItemName ? ` — ${data.loanItemName}` : data.subcategory ? ` › ${data.subcategory}` : "";
   const invited = data.inviteContact || "uczestnik";
   const amountLine = data.pricingMethod === "price"
@@ -3931,7 +3812,7 @@ function InvitationScreen({ data, contractId, totalPrice, onContinue }: {
   data: WizardData; contractId: string; totalPrice: number; onContinue: () => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const category = (CATEGORY_LABELS as Record<string, string>)[data.category] ?? data.category;
+  const category = CAT_LABELS[data.category] ?? data.category;
   const invited = data.inviteContact || "—";
   const url = `${window.location.origin}/kontrakt/${contractId}`;
 
@@ -3983,7 +3864,7 @@ function InvitationScreen({ data, contractId, totalPrice, onContinue }: {
           📤 Udostępnij umowę
         </button>
         <a
-          href={`https://wa.me/?text=${encodeURIComponent(`Zaproszenie do umowy #${contractId}\n📋 ${data.category ? ((CATEGORY_LABELS as Record<string,string>)[data.category] ?? "") : ""}${data.subcategory ? ` › ${data.subcategory}` : ""}\n\nKliknij, żeby przejrzeć i podpisać:\n${url}`)}`}
+          href={`https://wa.me/?text=${encodeURIComponent(`Zaproszenie do umowy #${contractId}\n📋 ${data.category ? (CAT_LABELS[data.category] ?? "") : ""}${data.subcategory ? ` › ${data.subcategory}` : ""}\n\nKliknij, żeby przejrzeć i podpisać:\n${url}`)}`}
           target="_blank"
           rel="noopener noreferrer"
           style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px", borderRadius: 12, border: "1.5px solid #25d366", background: "rgba(37,211,102,0.08)", color: "#16a34a", fontSize: 15, fontWeight: 700, textDecoration: "none", boxSizing: "border-box", width: "100%", marginBottom: 8 }}
@@ -4038,7 +3919,7 @@ function InvitationScreen({ data, contractId, totalPrice, onContinue }: {
 function ContractDocument({ data, contractId, onClose }: { data: WizardData; contractId: string; onClose: () => void }) {
   const [copiedDoc, setCopiedDoc] = useState(false);
   const totalPrice = calcTotal(data);
-  const category = (CATEGORY_LABELS as Record<string, string>)[data.category] ?? data.category;
+  const category = CAT_LABELS[data.category] ?? data.category;
   const clientLabel = data.category === "wynajem" ? "Najemca" : data.category === "sprzedaz" ? "Kupujący" : data.category === "wypozyczenie" ? "Pożyczający" : "Zleceniodawca";
   const contractorLabel = data.category === "wynajem" ? "Wynajmujący" : data.category === "sprzedaz" ? "Sprzedający" : data.category === "wypozyczenie" ? "Wypożyczający" : "Wykonawca";
   const today = new Date().toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" });
