@@ -30,6 +30,18 @@ jobs:
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install
 
+      # arm64-only + minification keeps the APK small enough to download reliably on mobile
+      - name: Configure APK size reduction
+        working-directory: android
+        run: |
+          sed -i '/^reactNativeArchitectures=/d' gradle.properties
+          cat >> gradle.properties <<'EOF'
+          reactNativeArchitectures=arm64-v8a
+          android.enableMinifyInReleaseBuilds=true
+          android.enableProguardInReleaseBuilds=true
+          android.enableShrinkResourcesInReleaseBuilds=true
+          EOF
+
       - name: Build release APK
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon
