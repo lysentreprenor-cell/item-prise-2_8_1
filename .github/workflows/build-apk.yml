@@ -40,7 +40,11 @@ jobs:
           android.enableMinifyInReleaseBuilds=true
           android.enableProguardInReleaseBuilds=true
           android.enableShrinkResourcesInReleaseBuilds=true
+          expo.useLegacyPackaging=true
           EOF
+          # prebuilt RN libraries ignore reactNativeArchitectures, so filter ABIs explicitly
+          sed -i '0,/defaultConfig {/s//defaultConfig {\n        ndk { abiFilters "arm64-v8a" }/' app/build.gradle
+          grep -n 'abiFilters' app/build.gradle
 
       - name: Build release APK
         working-directory: android
