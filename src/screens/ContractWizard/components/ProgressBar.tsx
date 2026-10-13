@@ -8,11 +8,12 @@ interface Props {
   currentStep: number;
   totalSteps: number;
   onStepPress?: (step: number) => void;
+  topInset?: number;
 }
 
-export default function ProgressBar({ currentStep, totalSteps, onStepPress }: Props) {
+export default function ProgressBar({ currentStep, totalSteps, onStepPress, topInset = 0 }: Props) {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: styles.container.paddingTop + topInset }]}>
       <Text style={styles.title}>Nowa umowa</Text>
       <Text style={styles.subtitle}>Krok {currentStep} z {totalSteps}</Text>
       <View style={styles.stepsRow}>

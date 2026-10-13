@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, SafeAreaView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, KeyboardAvoidingView, Keyboard } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { ContractData, INITIAL_CONTRACT_DATA } from '../../types/contract';
 import { calculateTotal } from '../../utils/pricing';
@@ -19,6 +20,17 @@ const TOTAL_STEPS = 6;
 export default function ContractWizard() {
   const [currentStep, setCurrentStep] = useState(1);
   const [data, setData] = useState<ContractData>(INITIAL_CONTRACT_DATA);
+  const insets = useSafeAreaInsets();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   const updateData = (updates: Partial<ContractData>) => {
     setData(prev => ({ ...prev, ...updates }));
@@ -70,10 +82,11 @@ export default function ContractWizard() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="light" backgroundColor={C.bg} />
-      <View style={styles.container}>
+    <View style={styles.root}>
+      <StatusBar style="light" />
+      <KeyboardAvoidingView style={styles.container} behavior="padding">
         <ProgressBar
+          topInset={insets.top}
           currentStep={currentStep}
           totalSteps={TOTAL_STEPS}
           onStepPress={goToStep}
@@ -86,14 +99,15 @@ export default function ContractWizard() {
           onNext={goNext}
           onSaveDraft={saveDraft}
           onCreateContract={createContract}
+          bottomInset={keyboardVisible ? 0 : insets.bottom}
         />
-      </View>
-    </SafeAreaView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  root: {
     flex: 1,
     backgroundColor: C.bg,
   },

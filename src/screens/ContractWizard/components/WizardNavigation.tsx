@@ -9,6 +9,7 @@ interface Props {
   onNext: () => void;
   onSaveDraft: () => void;
   onCreateContract?: () => void;
+  bottomInset?: number;
 }
 
 export default function WizardNavigation({
@@ -18,12 +19,13 @@ export default function WizardNavigation({
   onNext,
   onSaveDraft,
   onCreateContract,
+  bottomInset = 0,
 }: Props) {
   const isLastStep = currentStep === totalSteps;
   const isFirstStep = currentStep === 1;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: styles.container.paddingBottom + bottomInset }]}>
       <TouchableOpacity
         style={[styles.btn, styles.btnSecondary, isFirstStep && styles.btnDisabled]}
         onPress={onBack}
@@ -62,7 +64,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingTop: 10,
-    paddingBottom: 16,
+    paddingBottom: 12,
     gap: 8,
     backgroundColor: C.card,
     borderTopWidth: 1,
